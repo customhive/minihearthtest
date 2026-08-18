@@ -43,7 +43,7 @@
   .board{min-height:190px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .mini{width:150px;min-height:160px}
   .status{padding:10px;border-radius:10px;background:#10161e;border:1px dashed #3a495b;color:#d8e3ed}
-  .draft-grid{display:grid;grid-template-columns:repeat(4,180px);gap:10px;justify-content:start;align-items:stretch}
+  .draft-grid{display:grid;grid-template-columns:repeat(3,180px);gap:10px;justify-content:start;align-items:stretch}
   .draft-card{width:180px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
   .draft-card:hover{border-color:var(--accent)}
   .draft-card.disabled{opacity:.35;cursor:default}
@@ -396,8 +396,8 @@
   <div id="classPanel" class="panel hidden">
     <div class="between">
       <div>
-        <div class="section-title">使用する2セットを選択</div>
-        <div class="sub">選んだ2セットの24枚を混ぜ、A-B-B-A方式で12枚ずつドラフトします。</div>
+        <div class="section-title">使用する3セットを選択</div>
+        <div class="sub">選んだ3セットの36枚を混ぜ、毎ラウンド6枚を公開。A-B-B-Aで4枚を選び、残り2枚を除外します。6ラウンドで12枚ずつドラフトします。</div>
       </div>
       <div class="utility-bar">
         <button class="btn compact" onclick="randomizeClassSets()">ランダムで選ぶ</button>
@@ -417,7 +417,7 @@
         <span class="pill">あなた <span id="humanCount">0</span>/12</span>
         <span class="pill">相手 <span id="npcCount">0</span>/12</span>
         <button class="btn compact" onclick="showDeckModal()">自分のデッキを見る</button>
-        <button class="btn compact" onclick="showDiscardModal()">捨て札を見る</button>
+        <button class="btn compact" onclick="showDiscardModal()">除外カードを見る</button>
       </div>
     </div>
     <div id="draftPickBanner" class="draft-pick-banner">ドラフト開始。カードを選んでください。</div>
@@ -780,7 +780,7 @@ function bindConnection(c){
   c.on("open",()=>{
     netConnected=true;netActionPending=false;
     if(isHostRole()){
-      setNetStatus("対戦相手が参加しました。使用する2セットを選んでください。","connected");
+      setNetStatus("対戦相手が参加しました。使用する3セットを選んでください。","connected");
       netStage="class";setStage("class");renderClassSelection();broadcastSnapshot();
     }else{
       setNetStatus("ホストに接続しました。ゲーム開始を待っています。","connected");
@@ -844,7 +844,7 @@ function initClassSelection(){
 function toggleClassSet(id){
   if(selectedSets.includes(id))selectedSets=selectedSets.filter(x=>x!==id);
   else{
-    if(selectedSets.length>=2)return;
+    if(selectedSets.length>=3)return;
     selectedSets.push(id);
   }
   renderClassSelection();
@@ -852,20 +852,20 @@ function toggleClassSet(id){
 function randomizeClassSets(){
   const ids=Object.keys(SET_META);
   const shuffled=shuffle(ids);
-  selectedSets=shuffled.slice(0,2);
+  selectedSets=shuffled.slice(0,3);
   renderClassSelection();
 }
 
 function renderClassSelection(){
   document.querySelectorAll(".class-choice").forEach(el=>el.classList.toggle("selected",selectedSets.includes(el.dataset.set)));
-  byId("classStartBtn").disabled=selectedSets.length!==2||!netConnected||!isHostRole();
+  byId("classStartBtn").disabled=selectedSets.length!==3||!netConnected||!isHostRole();
 }
 
 function beginSelectedDraft(){
-  if(!isHostRole()||!netConnected||selectedSets.length!==2)return;
+  if(!isHostRole()||!netConnected||selectedSets.length!==3)return;
   const ids=ALL_IDS.filter(id=>selectedSets.includes(C[id].set));
-  if(ids.length!==24){alert(`選択セットのカード数が24枚ではありません: ${ids.length}`);return}
-  draft={pool:shuffle(ids),round:0,batch:[],human:[],npc:[],sequence:[],pickIndex:0,currentPicker:null,phase:""};
+  if(ids.length!==36){alert(`選択セットのカード数が36枚ではありません: ${ids.length}`);return}
+  draft={pool:shuffle(ids),round:0,batch:[],human:[],npc:[],excluded:[],sequence:[],pickIndex:0,currentPicker:null,phase:""};
   lastDraftMessage=`${selectedSets.map(x=>SET_META[x].label).join(" + ")} でドラフト開始`;
   setStage("draft");
   startDraftRound();
@@ -903,7 +903,7 @@ function showDiscardModal(){
   if(game){
     openCardModal("自分の捨て札",`${P(side).discard.length} 枚`,[...P(side).discard]);
   }else{
-    openCardModal("捨て札","ドラフト中は捨て札はありません。",[]);
+    openCardModal("ゲームから除外されたカード",`${(draft.excluded||[]).length} 枚`,[...(draft.excluded||[])]);
   }
 }
 
@@ -955,8 +955,8 @@ function startDraftRound(){
   if(!isHostRole())return;
   if(draft.pool.length===0){setTimeout(startGame,350);return}
   draft.round++;
-  draft.batch=draft.pool.splice(0,4);
-  draft.sequence=draft.round%2===1?["human","npc","npc","human"]:["npc","human","human","npc"];
+  draft.batch=draft.pool.splice(0,6);
+  draft.sequence=["human","npc","npc","human"];
   draft.pickIndex=0;
   draft.currentPicker=draft.sequence[0];
   draft.phase="pvp";
@@ -980,7 +980,11 @@ function hostDraftPick(side,id){
   showDraftPickMessage(sideLabel(side),id);
   draft.pickIndex++;
   if(draft.pickIndex>=draft.sequence.length){
+    // 4 picks are complete. The 2 unpicked cards are removed from the game.
+    draft.excluded.push(...draft.batch);
+    draft.batch=[];
     draft.currentPicker=null;
+    lastDraftMessage=`Round ${draft.round}: 残り2枚をゲームから除外`;
     renderDraft();
     setTimeout(startDraftRound,350);
   }else{
