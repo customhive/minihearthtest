@@ -22,12 +22,12 @@
   .between{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
   .hero{padding:10px 12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);min-width:180px}
   .hero strong{font-size:18px}
-  .hp{color:#ff8890;font-weight:800}.mana{color:#85b9ff;font-weight:800}
+  .hp{color:#ff8890;font-weight:800}.mana{color:#ffd166;font-weight:800}
   .armor{color:#d5dbe2;font-weight:800}
   .card{width:165px;min-height:178px;background:linear-gradient(180deg,#283443,#202833);border:1px solid #45566b;border-radius:12px;padding:10px;position:relative;display:flex;flex-direction:column;gap:6px}
   .card.enemy{opacity:.82}
   .card.selectable,.targetable{outline:2px solid var(--accent);cursor:pointer}
-  .card .cost{position:absolute;right:8px;top:7px;background:#173b6f;color:#b9d6ff;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-weight:900}
+  .card .cost{position:absolute;right:8px;top:7px;background:#d6a514;color:#fff7cf;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-weight:900}
   .card .name{font-weight:800;padding-right:30px}
   .stats{margin-top:auto;font-weight:900;font-size:18px;display:flex;justify-content:space-between}
   .atk{color:#ffd166}.health{color:#ff8c94}
@@ -451,7 +451,7 @@
               <div class="section-title" style="margin-bottom:2px">あなたのショップ</div>
               <div class="sub">❄でカードを個別フリーズ。リロールは未フリーズカードだけ更新し、使うたびコスト+1。</div>
             </div>
-            <button id="rerollBtn" class="btn compact" onclick="rerollHumanShop()">リロール 1マナ</button>
+            <button id="rerollBtn" class="btn compact" onclick="rerollHumanShop()">リロール 1コイン</button>
           </div>
           <div id="humanShop" class="shop"></div>
         </div>
@@ -499,7 +499,7 @@ const CONFIG = {
   heroHp: 20,
   boardLimit: 5,
   shopBase: 3,
-  maxMana: 10,
+  maxMana: 7,
   fireballDamage: 4,
   frostboltDamage: 2,
 };
@@ -559,7 +559,7 @@ const C = {
   shieldbearer:{set:"WARRIOR",name:"盾持ち",type:"minion",cost:1,atk:0,hp:4,text:"挑発",taunt:true},
   grimpatron:{set:"WARRIOR",name:"ぐったりガブ呑み亭の常連",type:"minion",cost:5,atk:3,hp:3,text:"このミニオンがダメージを受けて生き残るたび、3/3の常連を1体召喚",onDamaged:"grimpatron"},
   brawler:{set:"WARRIOR",name:"乱闘屋",type:"minion",cost:5,atk:3,hp:4,text:"購入時：ランダムなミニオン1体を残し、それ以外のすべてのミニオンを破壊",onPurchase:"brawl"},
-  grommash:{set:"WARRIOR",name:"グロマッシュ・ヘルスクリーム",type:"minion",cost:8,atk:4,hp:9,text:"ダメージを受けている間、攻撃力+6",enrageAttack:6},
+  grommash:{set:"WARRIOR",name:"グロマッシュ・ヘルスクリーム",type:"minion",cost:7,atk:4,hp:9,text:"ダメージを受けている間、攻撃力+6",enrageAttack:6},
   whirlwind:{set:"WARRIOR",name:"旋風剣",type:"spell",cost:1,text:"すべてのミニオンに1ダメージ",spell:"whirlwind"},
   execute:{set:"WARRIOR",name:"止めの一撃",type:"spell",cost:1,text:"ダメージを受けている敵ミニオン1体を破壊",spell:"execute",target:"damagedEnemyMinion"},
   slam:{set:"WARRIOR",name:"叩きつけ",type:"spell",cost:2,text:"ミニオン1体に2ダメージ。それが生き残ったら、ショップを1枚補充",spell:"slam",target:"anyMinion"},
@@ -587,7 +587,7 @@ const C = {
   bloodknight:{set:"PALADIN",name:"ブラッドナイト",type:"minion",cost:3,atk:3,hp:3,text:"購入時：すべてのミニオンの聖なる盾を失わせ、1つにつき+3/+3",onPurchase:"bloodknight"},
   defenderargus:{set:"PALADIN",name:"アルガスの守護者",type:"minion",cost:4,atk:2,hp:3,text:"購入時：隣接する味方ミニオンを+1/+1し、挑発を付与",onPurchase:"defenderargus"},
   guardiankings:{set:"PALADIN",name:"王の守護者",type:"minion",cost:6,atk:5,hp:6,text:"急襲。攻撃時：自分のヒーローを2回復",rush:true,onAttack:"heal2"},
-  tirion:{set:"PALADIN",name:"ティリオン・フォードリング",type:"minion",cost:8,atk:6,hp:6,text:"聖なる盾・挑発。死亡時：5/3・急襲の「アッシュブリンガー」を召喚",shield:true,taunt:true,death:"tirion"},
+  tirion:{set:"PALADIN",name:"ティリオン・フォードリング",type:"minion",cost:7,atk:6,hp:6,text:"聖なる盾・挑発。死亡時：5/3・急襲の「アッシュブリンガー」を召喚",shield:true,taunt:true,death:"tirion"},
   equality:{set:"PALADIN",name:"平等",type:"spell",cost:2,text:"すべてのミニオンの体力を1にする",spell:"equality"},
   consecration:{set:"PALADIN",name:"聖別",type:"spell",cost:4,text:"すべての敵キャラクターに2ダメージ",spell:"consecration"},
   blessingkings:{set:"PALADIN",name:"王の祝福",type:"spell",cost:4,text:"味方ミニオン1体を+4/+4",spell:"blessingkings",target:"friendlyMinion"},
@@ -1003,7 +1003,7 @@ function renderDraft(){
   draft.batch.forEach(id=>{
     const c=C[id], d=document.createElement("div"); d.className=`draft-card ${c.type==="spell"?"spell-card":"minion-card"}`;
     d.innerHTML=`<div class="between"><b>${c.name}</b><span class="pill">${c.set}</span></div>
-    <div class="sub">${c.type==="minion"?`${c.cost}マナ ${c.atk}/${c.hp}`:`${c.cost}マナ スペル`}</div>
+    <div class="sub">${c.type==="minion"?`${c.cost}コイン ${c.atk}/${c.hp}`:`${c.cost}コイン スペル`}</div>
     <div style="margin-top:8px">${c.text}</div>`;
     if(mine&&!netActionPending){d.onclick=()=>humanDraftPick(id)} else d.classList.add("disabled");
     g.appendChild(d);
@@ -1110,7 +1110,7 @@ function rerollShop(side){
   p.shopFrozenFlags=keptFlags;
   refillShop(side,CONFIG.shopBase);
 
-  log(`${p.name}がショップをリロール（${cost}マナ）。`);
+  log(`${p.name}がショップをリロール（${cost}コイン）。`);
   return true;
 }
 
@@ -1177,7 +1177,7 @@ function startTurn(side){
     m.summonedThisTurn=false;
   }
   prepareShopForTurn(side);
-  log(`--- ${p.name}のターン (${p.mana}/${p.maxMana}マナ) ---`);
+  log(`--- ${p.name}のターン (${p.mana}/${p.maxMana}コイン) ---`);
 
   game.startEffectQueue=p.board.filter(m=>(C[m.id]||{}).start==="lightpriest").map(m=>m.uid);
   render();
@@ -2122,7 +2122,7 @@ function renderHero(side,containerId){
   const targetable=isPendingTarget(side,"hero",null)||(side===opp&&selectedAttacker&&!hasTaunt(opp));
   el.className="hero"+(targetable?" targetable":"");
   const name=side===me?"あなた":"相手";
-  el.innerHTML=`<strong>${name}</strong><br><span class="hp">HP ${p.hp}</span>　<span class="armor">装甲 ${p.armor}</span>　<span class="mana">Mana ${p.mana}/${p.maxMana}</span><br><span class="sub">Deck ${p.deck.length} / Discard ${p.discard.length} / 廃棄 ${p.exile.length}</span>`;
+  el.innerHTML=`<strong>${name}</strong><br><span class="hp">HP ${p.hp}</span>　<span class="armor">装甲 ${p.armor}</span>　<span class="mana">コイン ${p.mana}/${p.maxMana}</span><br><span class="sub">Deck ${p.deck.length} / Discard ${p.discard.length} / 廃棄 ${p.exile.length}</span>`;
   el.onclick=()=>clickTarget(side,"hero",null);
   el.ondragover=(e)=>handleTargetDragOver(e,side,"hero",null);
   el.ondrop=(e)=>handleTargetDrop(e,side,"hero",null);
@@ -2153,7 +2153,7 @@ function render(){
   const rerollBtn=byId("rerollBtn"),rrCost=rerollCost(me);
   rerollBtn.disabled=game.active!==me||game.over||game.animating||!!pending||!!dragPurchase||!!game.choice||netActionPending||
     P(me).mana<rrCost||!hasRerollableCards(me);
-  rerollBtn.textContent=`リロール ${rrCost}マナ`;
+  rerollBtn.textContent=`リロール ${rrCost}コイン`;
   byId("cancelBtn").classList.toggle("hidden",!pending&&!selectedAttacker);
   const bf=document.querySelector(".battlefield");if(bf)bf.classList.toggle("animating",!!game.animating);
   if(pending?.kind==="placement")requestAnimationFrame(syncPlacementOverlay);
