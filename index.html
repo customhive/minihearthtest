@@ -1,0 +1,2167 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mini Hearth Online — P2P PvP</title>
+<style>
+  :root{
+    --bg:#11151b; --panel:#1a212b; --panel2:#222b37; --text:#eef3f8; --muted:#9fb0c3;
+    --accent:#f2b84b; --good:#65c98b; --bad:#ef6b73; --line:#344252; --blue:#6ea8fe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+  button{font:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  .topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+  .title{font-size:24px;font-weight:800}
+  .sub{color:var(--muted);font-size:13px}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .between{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+  .hero{padding:10px 12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);min-width:180px}
+  .hero strong{font-size:18px}
+  .hp{color:#ff8890;font-weight:800}.mana{color:#85b9ff;font-weight:800}
+  .armor{color:#d5dbe2;font-weight:800}
+  .card{width:165px;min-height:178px;background:linear-gradient(180deg,#283443,#202833);border:1px solid #45566b;border-radius:12px;padding:10px;position:relative;display:flex;flex-direction:column;gap:6px}
+  .card.enemy{opacity:.82}
+  .card.selectable,.targetable{outline:2px solid var(--accent);cursor:pointer}
+  .card .cost{position:absolute;right:8px;top:7px;background:#173b6f;color:#b9d6ff;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-weight:900}
+  .card .name{font-weight:800;padding-right:30px}
+  .stats{margin-top:auto;font-weight:900;font-size:18px;display:flex;justify-content:space-between}
+  .atk{color:#ffd166}.health{color:#ff8c94}
+  .text{font-size:12px;line-height:1.35;color:#d9e2ec}
+  .type{font-size:11px;color:var(--muted)}
+  .btn{background:#314054;color:white;border:1px solid #51647b;border-radius:9px;padding:7px 10px;cursor:pointer}
+  .btn:hover{filter:brightness(1.12)}
+  .btn.primary{background:#6b4f12;border-color:#b88a26;color:#fff2c7}
+  .btn.good{background:#17492e;border-color:#2d8b58}
+  .btn.bad{background:#5b2328;border-color:#9b3d45}
+  .btn:disabled{opacity:.38;cursor:not-allowed}
+  .shop{display:flex;gap:10px;flex-wrap:wrap}
+  .board{min-height:190px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .mini{width:150px;min-height:160px}
+  .status{padding:10px;border-radius:10px;background:#10161e;border:1px dashed #3a495b;color:#d8e3ed}
+  .draft-grid{display:grid;grid-template-columns:repeat(4,180px);gap:10px;justify-content:start;align-items:stretch}
+  .draft-card{width:180px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+  .draft-card:hover{border-color:var(--accent)}
+  .draft-card.disabled{opacity:.35;cursor:default}
+  .log{height:220px;overflow:auto;background:#0d1218;border:1px solid var(--line);border-radius:10px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+  .hidden{display:none!important}
+  .section-title{font-weight:800;margin-bottom:8px}
+  .tag{display:inline-block;font-size:10px;border:1px solid #58687b;border-radius:6px;padding:2px 5px;margin-right:4px;color:#cfd9e4}
+  .notice{color:#ffd98c}
+  .winner{font-size:24px;font-weight:900;color:#ffd166}
+  @media(max-width:700px){.card{width:145px}.wrap{padding:10px}.title{font-size:20px}}
+
+  .game-grid{
+    display:grid;
+    grid-template-columns:260px minmax(0,1fr) 220px;
+    gap:12px;
+    align-items:start;
+  }
+  .left-col,.center-col,.right-col{min-width:0}
+  .sticky-col{position:sticky;top:12px}
+  .battlefield{
+    background:linear-gradient(180deg,#1d2732 0%,#18212b 48%,#121922 50%,#1a232d 52%,#1b2530 100%);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:inset 0 0 40px rgba(0,0,0,.18);
+  }
+  .field-half{padding:12px}
+  .enemy-half{border-bottom:1px solid #465769}
+  .field-label{
+    font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:800;
+    letter-spacing:.06em;text-transform:uppercase
+  }
+  .board{min-height:178px;justify-content:center}
+  .shop-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+  .hero-stack{display:flex;flex-direction:column;gap:10px}
+  .hero{min-width:0;width:100%}
+  .turn-actions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .turn-actions .btn{width:100%}
+  .log{height:calc(100vh - 160px);min-height:480px}
+  .card{transition:transform .13s ease,box-shadow .13s ease,opacity .13s ease}
+  .attack-lunge{animation:attackLunge .22s ease-in-out;z-index:10}
+  .damage-flash{animation:damageFlash .34s ease-out}
+  .heal-flash{animation:healFlash .38s ease-out}
+  .hero-hit{animation:heroHit .32s ease-out}
+  .fx-float{
+    position:fixed;z-index:9999;pointer-events:none;font-weight:950;font-size:23px;
+    color:#ff747e;text-shadow:0 2px 7px #000;animation:floatFx .72s ease-out forwards
+  }
+  .fx-burst{
+    position:fixed;z-index:9998;pointer-events:none;width:24px;height:24px;border-radius:50%;
+    border:3px solid rgba(255,105,115,.9);box-shadow:0 0 28px rgba(255,105,115,.85);
+    animation:burstFx .42s ease-out forwards
+  }
+  .battlefield.animating{box-shadow:inset 0 0 50px rgba(255,205,100,.05)}
+  @keyframes attackLunge{
+    0%{transform:translateY(0) scale(1)}
+    45%{transform:translateY(-12px) scale(1.06);box-shadow:0 10px 24px rgba(242,184,75,.28)}
+    100%{transform:translateY(0) scale(1)}
+  }
+  @keyframes damageFlash{
+    0%{box-shadow:0 0 0 rgba(255,80,90,0);transform:scale(1)}
+    38%{box-shadow:0 0 30px rgba(255,80,90,.85);transform:scale(.95)}
+    100%{box-shadow:0 0 0 rgba(255,80,90,0);transform:scale(1)}
+  }
+  @keyframes healFlash{
+    0%{box-shadow:0 0 0 rgba(101,201,139,0)}
+    40%{box-shadow:0 0 28px rgba(101,201,139,.85)}
+    100%{box-shadow:0 0 0 rgba(101,201,139,0)}
+  }
+  @keyframes heroHit{
+    0%{transform:translateX(0)}
+    25%{transform:translateX(-7px)}
+    52%{transform:translateX(7px)}
+    100%{transform:translateX(0)}
+  }
+  @keyframes floatFx{
+    0%{opacity:0;transform:translate(-50%,8px) scale(.75)}
+    18%{opacity:1;transform:translate(-50%,0) scale(1.14)}
+    100%{opacity:0;transform:translate(-50%,-40px) scale(.95)}
+  }
+  @keyframes burstFx{
+    0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(3.3)}
+  }
+  @media(max-width:1000px){
+    .game-grid{grid-template-columns:220px minmax(0,1fr)}
+    .right-col{grid-column:1 / -1;grid-row:1}
+    .right-col .sticky-col{position:static}
+    .right-col .hero-stack{display:grid;grid-template-columns:1fr auto 1fr}
+    .right-col .turn-actions{flex-direction:row}
+    .right-col .turn-actions .btn{width:auto;flex:1}
+    .left-col{grid-column:1}.center-col{grid-column:2}
+    .log{height:calc(100vh - 260px);min-height:360px}
+  }
+  @media(max-width:760px){
+    .game-grid{grid-template-columns:1fr}
+    .left-col,.center-col,.right-col{grid-column:1}
+    .left-col{order:3}.center-col{order:2}.right-col{order:1}
+    .sticky-col{position:static}
+    .log{height:260px;min-height:260px}
+    .right-col .hero-stack{display:flex}
+  }
+
+
+  .btn.compact{padding:4px 7px;font-size:11px;border-radius:7px;white-space:nowrap}
+  .utility-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .draft-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .draft-pick-banner{
+    margin-top:10px;padding:9px 10px;border-radius:10px;background:#111821;border:1px solid #3a4a5c;
+    min-height:40px;color:#dbe6f0;display:flex;align-items:center;gap:8px;overflow:hidden
+  }
+  .draft-pick-banner.pop{animation:draftPickPop .55s ease-out}
+  .draft-pick-card{
+    display:inline-flex;align-items:center;gap:7px;padding:4px 8px;border-radius:8px;
+    background:#263241;border:1px solid #4b5e74;font-weight:800
+  }
+  @keyframes draftPickPop{
+    0%{opacity:.25;transform:translateY(-5px) scale(.98)}
+    35%{opacity:1;transform:translateY(0) scale(1.02);box-shadow:0 0 22px rgba(110,168,254,.25)}
+    100%{opacity:1;transform:translateY(0) scale(1)}
+  }
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(3,7,12,.72);z-index:10000;display:grid;place-items:center;padding:18px
+  }
+  .modal-card{
+    width:min(900px,96vw);max-height:86vh;overflow:auto;background:#17202a;border:1px solid #425367;
+    border-radius:14px;padding:14px;box-shadow:0 24px 70px rgba(0,0,0,.45)
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+  .modal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+  .modal-item{background:#212b37;border:1px solid #39495b;border-radius:10px;padding:10px}
+  .modal-item .name{font-weight:850}
+  .modal-empty{color:var(--muted);padding:12px 0}
+
+
+  .card.minion-card{
+    background:linear-gradient(180deg,#3a3027,#2b241e);
+    border-color:#6d5947;
+  }
+  .card.spell-card{
+    background:linear-gradient(180deg,#223a57,#1a2b42);
+    border-color:#4b6f99;
+  }
+  .draft-card.minion-card,.modal-item.minion-card{
+    background:linear-gradient(180deg,#342c25,#28221d);
+    border-color:#675647;
+  }
+  .draft-card.spell-card,.modal-item.spell-card{
+    background:linear-gradient(180deg,#203650,#192a40);
+    border-color:#486a91;
+  }
+  .card.ready-to-attack{
+    border-color:#5fd58b!important;
+    box-shadow:0 0 0 2px rgba(95,213,139,.38),0 0 18px rgba(95,213,139,.18);
+  }
+  .placement-slot{
+    width:42px;
+    min-height:140px;
+    border:2px dashed #6fcf97;
+    border-radius:10px;
+    display:grid;
+    place-items:center;
+    color:#8de0ad;
+    font-size:22px;
+    font-weight:900;
+    cursor:pointer;
+    background:rgba(72,150,101,.08);
+    transition:.15s ease;
+  }
+  .placement-slot:hover{
+    background:rgba(72,150,101,.2);
+    transform:scale(1.04);
+  }
+  .placement-hint{
+    width:100%;
+    color:#9fe4ba;
+    font-size:12px;
+    text-align:center;
+    margin-bottom:4px;
+  }
+
+
+  @media(max-width:900px){
+    .draft-grid{grid-template-columns:repeat(2,180px)}
+  }
+  @media(max-width:460px){
+    .draft-grid{grid-template-columns:180px}
+  }
+
+
+  /* Placement is an overlay: it never participates in the flex layout. */
+  .board{
+    position:relative;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding-left:24px;
+    padding-right:24px;
+  }
+  .placement-slot{display:none!important}
+  .placement-hint{display:none!important}
+
+  .placement-overlay{
+    position:absolute;
+    inset:0;
+    z-index:30;
+    pointer-events:none;
+  }
+  .placement-marker{
+    position:absolute;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    border:2px solid #72dc9d;
+    background:#173b29;
+    color:#a9f0c4;
+    display:grid;
+    place-items:center;
+    font-size:18px;
+    font-weight:950;
+    cursor:pointer;
+    pointer-events:auto;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 3px rgba(114,220,157,.12),0 5px 14px rgba(0,0,0,.35);
+    transition:transform .12s ease,background .12s ease,box-shadow .12s ease;
+  }
+  .placement-marker:hover,
+  .placement-marker.drag-over{
+    transform:translate(-50%,-50%) scale(1.18);
+    background:#22613e;
+    box-shadow:0 0 0 5px rgba(114,220,157,.18),0 5px 18px rgba(0,0,0,.4);
+  }
+  .placement-caption{
+    position:absolute;
+    z-index:31;
+    left:50%;
+    top:7px;
+    transform:translateX(-50%);
+    padding:3px 8px;
+    border-radius:999px;
+    background:rgba(12,25,18,.92);
+    border:1px solid rgba(114,220,157,.45);
+    color:#acf0c6;
+    font-size:11px;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+
+  .shop .card[draggable="true"]{cursor:grab}
+  .shop .card[draggable="true"]:active{cursor:grabbing}
+  .shop-card-dragging{opacity:.48;transform:scale(.97)}
+  .drag-valid-target{
+    outline:3px solid #70b7ff!important;
+    box-shadow:0 0 0 3px rgba(112,183,255,.18),0 0 22px rgba(112,183,255,.28)!important;
+  }
+  .drag-invalid{opacity:.58}
+  .battlefield.spell-drop-ready{
+    outline:2px dashed #70b7ff;
+    outline-offset:4px;
+  }
+  .drag-help{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    z-index:10001;
+    background:rgba(10,17,25,.94);
+    border:1px solid #4d6178;
+    border-radius:999px;
+    padding:7px 12px;
+    color:#dbe9f7;
+    font-size:12px;
+    pointer-events:none;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+
+
+  .class-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+  .class-choice{
+    background:#202a35;border:1px solid #3d4c5e;border-radius:12px;padding:12px;cursor:pointer;
+    transition:.14s ease;text-align:left;color:var(--text)
+  }
+  .class-choice:hover{border-color:#71859b;transform:translateY(-1px)}
+  .class-choice.selected{
+    border-color:#f0bd55;box-shadow:0 0 0 2px rgba(240,189,85,.18),0 0 22px rgba(240,189,85,.12);
+    background:#332b1e
+  }
+  .class-choice b{display:block;font-size:16px;margin-bottom:4px}
+  .class-choice span{font-size:12px;color:var(--muted)}
+  @media(max-width:700px){.class-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+  .shop-card-wrap{position:relative}
+  .shop-freeze-btn{
+    position:absolute;
+    right:7px;
+    top:40px;
+    z-index:8;
+    min-width:28px;
+    padding:3px 6px!important;
+    line-height:1.1;
+    background:#27384b;
+    border-color:#4b6580;
+  }
+  .shop-freeze-btn.active{
+    background:#17476d;
+    border-color:#73b9ee;
+    color:#d9f2ff;
+    box-shadow:0 0 12px rgba(91,180,240,.28);
+  }
+  .shop-frozen{
+    border-color:#67b7ee!important;
+    box-shadow:0 0 0 2px rgba(103,183,238,.28),0 0 20px rgba(103,183,238,.12);
+  }
+
+  .invite-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .invite-input{flex:1;min-width:260px;background:#0f151d;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
+  #netBadge.connected{border-color:#2d8b58;color:#9fe4ba}
+  #netBadge.error{border-color:#9b3d45;color:#ffadb3}
+  @media(max-width:600px){.invite-input{min-width:100%;width:100%}.invite-row .btn{width:100%}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div class="title">Mini Hearth Online — P2P PvP</div>
+      <div class="sub">招待URLで2人対戦 / WebRTC P2P</div>
+    </div>
+    <button class="btn" onclick="location.reload()">最初から</button>
+  </div>
+
+
+  <div id="networkPanel" class="panel">
+    <div class="between">
+      <div>
+        <div class="section-title">オンライン対戦</div>
+        <div id="netRoleLabel" class="sub"></div>
+      </div>
+      <span id="netBadge" class="pill">接続準備中</span>
+    </div>
+    <div id="netStatus" class="status" style="margin-top:10px">通信を準備しています...</div>
+    <div id="inviteBox" class="invite-row hidden">
+      <input id="inviteUrl" class="invite-input" readonly aria-label="招待URL">
+      <button class="btn primary" onclick="copyInviteUrl()">招待URLをコピー</button>
+    </div>
+  </div>
+
+  <div id="classPanel" class="panel hidden">
+    <div class="between">
+      <div>
+        <div class="section-title">使用する2セットを選択</div>
+        <div class="sub">選んだ2セットの24枚を混ぜ、A-B-B-A方式で12枚ずつドラフトします。</div>
+      </div>
+      <div class="utility-bar">
+        <button class="btn compact" onclick="randomizeClassSets()">ランダムで選ぶ</button>
+        <button id="classStartBtn" class="btn primary" onclick="beginSelectedDraft()" disabled>ドラフト開始</button>
+      </div>
+    </div>
+    <div id="classGrid" class="class-grid"></div>
+  </div>
+
+  <div id="draftPanel" class="panel hidden">
+    <div class="between">
+      <div>
+        <div class="section-title">ドラフト</div>
+        <div id="draftStatus" class="sub"></div>
+      </div>
+      <div class="draft-actions">
+        <span class="pill">あなた <span id="humanCount">0</span>/12</span>
+        <span class="pill">相手 <span id="npcCount">0</span>/12</span>
+        <button class="btn compact" onclick="showDeckModal()">自分のデッキを見る</button>
+        <button class="btn compact" onclick="showDiscardModal()">捨て札を見る</button>
+      </div>
+    </div>
+    <div id="draftPickBanner" class="draft-pick-banner">ドラフト開始。カードを選んでください。</div>
+    <div id="draftGrid" class="draft-grid" style="margin-top:12px"></div>
+  </div>
+
+  <div id="gamePanel" class="hidden">
+    <div class="game-grid">
+      <aside class="left-col">
+        <div class="panel sticky-col">
+          <div class="section-title">ログ</div>
+          <div id="log" class="log"></div>
+        </div>
+      </aside>
+
+      <main class="center-col">
+        <div class="battlefield" ondragover="handleBattlefieldDragOver(event)" ondrop="handleBattlefieldDrop(event)">
+          <section class="field-half enemy-half">
+            <div class="field-label">相手のフィールド</div>
+            <div id="npcBoard" class="board"></div>
+          </section>
+          <section class="field-half human-half">
+            <div class="field-label">あなたのフィールド</div>
+            <div id="humanBoard" class="board"></div>
+          </section>
+        </div>
+
+        <div class="panel">
+          <div class="shop-head">
+            <div>
+              <div class="section-title" style="margin-bottom:2px">あなたのショップ</div>
+              <div class="sub">❄でカードを個別フリーズ。リロールは未フリーズカードだけ更新し、使うたびコスト+1。</div>
+            </div>
+            <button id="rerollBtn" class="btn compact" onclick="rerollHumanShop()">リロール 1マナ</button>
+          </div>
+          <div id="humanShop" class="shop"></div>
+        </div>
+      </main>
+
+      <aside class="right-col">
+        <div class="panel sticky-col">
+          <div class="section-title">対戦状況</div>
+          <div class="hero-stack">
+            <div id="npcHero" class="hero"></div>
+                        <div id="humanHero" class="hero"></div>
+          </div>
+          <div id="turnInfo" class="status" style="margin-top:10px"></div>
+          <div class="utility-bar" style="margin-top:10px">
+            <button class="btn compact" onclick="showDeckModal()">自分のデッキを見る</button>
+            <button class="btn compact" onclick="showDiscardModal()">捨て札を見る</button>
+          </div>
+          <div class="turn-actions">
+            <button id="cancelBtn" class="btn hidden" onclick="cancelPending()">キャンセル</button>
+            <button id="endTurnBtn" class="btn primary" onclick="endHumanTurn()">ターン終了</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+
+<div id="cardModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeCardModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div id="modalTitle" class="section-title" style="font-size:18px"></div>
+        <div id="modalSub" class="sub"></div>
+      </div>
+      <button class="btn compact" onclick="closeCardModal()">閉じる</button>
+    </div>
+    <div id="modalGrid" class="modal-grid"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script>
+const CONFIG = {
+  heroHp: 20,
+  boardLimit: 5,
+  shopBase: 3,
+  maxMana: 10,
+  fireballDamage: 4,
+  frostboltDamage: 2,
+};
+
+let uidCounter = 1;
+const newUid = () => "u" + (uidCounter++);
+
+const C = {
+  // HUNTER
+  leper:{set:"HUNTER",name:"厄介なノーム",type:"minion",cost:1,atk:2,hp:1,text:"死亡時：敵ヒーローに1ダメージ",death:"leper"},
+  hound:{set:"HUNTER",name:"猟犬",type:"minion",cost:1,atk:1,hp:1,text:"急襲",rush:true},
+  direwolf:{set:"HUNTER",name:"凶暴な狼",type:"minion",cost:2,atk:2,hp:2,text:"隣接する味方ミニオンの攻撃力+1",aura:"direwolf"},
+  shooter:{set:"HUNTER",name:"荒野の射手",type:"minion",cost:2,atk:2,hp:2,text:"購入時：敵ヒーローに2ダメージ",onPurchase:"shootFace"},
+  hyena:{set:"HUNTER",name:"腐肉食いのハイエナ",type:"minion",cost:2,atk:2,hp:2,text:"他の味方ミニオンが死亡するたび+1/+1",trigger:"hyena"},
+  juggler:{set:"HUNTER",name:"ナイフ・ジャグラー",type:"minion",cost:2,atk:2,hp:2,text:"他の味方ミニオンを召喚するたび、ランダムな敵に1ダメージ",trigger:"juggler"},
+  houndmaster:{set:"HUNTER",name:"獣使い",type:"minion",cost:4,atk:4,hp:3,text:"購入時：他の味方ミニオン1体を+2/+2し、挑発を与える",onPurchase:"houndmaster",target:"friendlyMinionOther"},
+  rhino:{set:"HUNTER",name:"ツンドラのサイ",type:"minion",cost:5,atk:2,hp:5,text:"他の味方ミニオンは急襲を持つ",aura:"rhino"},
+  highmane:{set:"HUNTER",name:"サバンナの獣王",type:"minion",cost:6,atk:6,hp:5,text:"死亡時：2/2のミニオンを2体召喚",death:"highmane"},
+  huntersmark:{set:"HUNTER",name:"狩人の印",type:"spell",cost:2,text:"ミニオン1体の体力を1にする",spell:"huntersmark",target:"anyMinion"},
+  killcommand:{set:"HUNTER",name:"殺しの命令",type:"spell",cost:3,text:"敵1体に3ダメージ。このターン味方ミニオンが死亡していたら5ダメージ",spell:"killcommand",target:"enemyCharacter"},
+  unleash:{set:"HUNTER",name:"猟犬を放て！",type:"spell",cost:3,text:"敵ミニオンの数だけ1/1・急襲の猟犬を召喚",spell:"unleash"},
+
+  // MAGE
+  manawyrm:{set:"MAGE",name:"マナ・ワーム",type:"minion",cost:1,atk:1,hp:3,text:"スペルを使うたび攻撃力+1",trigger:"manawyrm"},
+  apprentice:{set:"MAGE",name:"魔法使いの弟子",type:"minion",cost:2,atk:3,hp:2,text:"各ターン最初に使うスペルのコスト-1",aura:"apprentice"},
+  sparkmage:{set:"MAGE",name:"火花の魔術師",type:"minion",cost:2,atk:2,hp:2,text:"購入時：好きな対象に1ダメージ",onPurchase:"spark",target:"anyCharacter"},
+  doomsayer:{set:"MAGE",name:"終末預言者",type:"minion",cost:2,atk:0,hp:7,text:"次の自分のターン開始時、すべてのミニオンを破壊",start:"doomsayer"},
+  thalnos:{set:"MAGE",name:"ブラッドメイジ・サルノス",type:"minion",cost:2,atk:1,hp:1,text:"スペルダメージ+1。死亡時：ショップを1枚補充",spellDamage:1,death:"thalnos"},
+  acolyte:{set:"MAGE",name:"苦痛の侍祭",type:"minion",cost:3,atk:1,hp:3,text:"ダメージを受けるたび、ショップを1枚補充",onDamaged:"acolyte"},
+  flamewaker:{set:"MAGE",name:"フレイムウェイカー",type:"minion",cost:3,atk:2,hp:4,text:"スペルを使うたび、ランダムな敵に1ダメージを2回",trigger:"flamewaker"},
+  waterelemental:{set:"MAGE",name:"水の精霊",type:"minion",cost:4,atk:3,hp:6,text:"ダメージを与えた敵を凍結",onDamageDealt:"freeze"},
+  antonidas:{set:"MAGE",name:"大魔術師アントニダス",type:"minion",cost:7,atk:5,hp:7,text:"スペルを使うたび、ファイアーボールを生成",trigger:"antonidas"},
+  frostbolt:{set:"MAGE",name:"フロストボルト",type:"spell",cost:2,text:"敵1体に2ダメージを与え、凍結",spell:"frostbolt",target:"enemyCharacter"},
+  frostnova:{set:"MAGE",name:"フロストノヴァ",type:"spell",cost:3,text:"敵ミニオンすべてを凍結",spell:"frostnova"},
+  fireball:{set:"MAGE",name:"ファイアーボール",type:"spell",cost:4,text:"敵1体に4ダメージ",spell:"fireball",target:"enemyCharacter"},
+
+  // PRIEST
+  northshire:{set:"PRIEST",name:"ノースシャイアの聖職者",type:"minion",cost:1,atk:1,hp:3,text:"ミニオンが回復するたび、ショップを1枚補充",trigger:"northshire"},
+  lightwarden:{set:"PRIEST",name:"ライトウォーデン",type:"minion",cost:1,atk:1,hp:2,text:"キャラクターが回復するたび、攻撃力+1",trigger:"lightwarden"},
+  lightpriest:{set:"PRIEST",name:"光の侍祭",type:"minion",cost:2,atk:0,hp:1,text:"自分のターン開始時：キャラクター1体の体力を2回復",start:"lightpriest"},
+  injuredblademaster:{set:"PRIEST",name:"負傷した剣匠",type:"minion",cost:3,atk:4,hp:7,text:"購入時：自身に4ダメージ",onPurchase:"injuredblademaster"},
+  auchenai:{set:"PRIEST",name:"オウケナイのソウルプリースト",type:"minion",cost:4,atk:3,hp:5,text:"自分の回復効果は、代わりに同じ量のダメージを与える",aura:"auchenai"},
+  lightspawn:{set:"PRIEST",name:"ライトスポーン",type:"minion",cost:4,atk:0,hp:5,text:"このミニオンの攻撃力は、現在の体力と等しい",attackEqualsHealth:true},
+  divineapostle:{set:"PRIEST",name:"神授の使徒",type:"minion",cost:2,atk:1,hp:2,text:"購入時：右隣りのミニオンの体力を2倍にする",onPurchase:"doubleRightHealth"},
+  innerfireacolyte:{set:"PRIEST",name:"内なる炎の信徒",type:"minion",cost:1,atk:1,hp:1,text:"購入時：右隣りのミニオンの攻撃力を、その体力と同じ値にする",onPurchase:"innerFireRight"},
+  shieldacolyte:{set:"PRIEST",name:"盾の侍祭",type:"minion",cost:1,atk:1,hp:1,text:"購入時：右隣りのミニオンの体力+2。ショップを1枚補充",onPurchase:"shieldRight"},
+  circlehealing:{set:"PRIEST",name:"回復の輪",type:"spell",cost:1,text:"すべてのミニオンの体力を4回復",spell:"circlehealing"},
+  smallheal:{set:"PRIEST",name:"小回復",type:"spell",cost:2,text:"キャラクター1体の体力を2回復",spell:"smallheal",target:"anyCharacter"},
+  shadowworddeath:{set:"PRIEST",name:"影の言葉：死",type:"spell",cost:3,text:"攻撃力5以上のミニオン1体を破壊",spell:"shadowworddeath",target:"highAttackMinion"},
+
+  // WARRIOR
+  armorinitiate:{set:"WARRIOR",name:"盾持ちの新兵",type:"minion",cost:2,atk:2,hp:2,text:"購入時：装甲を2得る",onPurchase:"armor2"},
+  armorsmith:{set:"WARRIOR",name:"鎧職人",type:"minion",cost:2,atk:1,hp:4,text:"味方ミニオンがダメージを受けるたび、装甲を1得る",trigger:"armorsmith"},
+  taskmaster:{set:"WARRIOR",name:"残酷な現場監督",type:"minion",cost:2,atk:2,hp:2,text:"購入時：ミニオン1体に1ダメージを与え、攻撃力+2",onPurchase:"taskmaster",target:"anyMinion"},
+  amani:{set:"WARRIOR",name:"アマニの狂戦士",type:"minion",cost:2,atk:2,hp:3,text:"ダメージを受けている間、攻撃力+3",enrageAttack:3},
+  frothing:{set:"WARRIOR",name:"泡を吹く狂戦士",type:"minion",cost:3,atk:2,hp:4,text:"ミニオンがダメージを受けるたび、攻撃力+1",trigger:"frothing"},
+  shieldbearer:{set:"WARRIOR",name:"盾持ち",type:"minion",cost:1,atk:0,hp:4,text:"挑発",taunt:true},
+  grimpatron:{set:"WARRIOR",name:"ぐったりガブ呑み亭の常連",type:"minion",cost:5,atk:3,hp:3,text:"このミニオンがダメージを受けて生き残るたび、3/3の常連を1体召喚",onDamaged:"grimpatron"},
+  brawler:{set:"WARRIOR",name:"乱闘屋",type:"minion",cost:5,atk:3,hp:4,text:"購入時：ランダムなミニオン1体を残し、それ以外のすべてのミニオンを破壊",onPurchase:"brawl"},
+  grommash:{set:"WARRIOR",name:"グロマッシュ・ヘルスクリーム",type:"minion",cost:8,atk:4,hp:9,text:"ダメージを受けている間、攻撃力+6",enrageAttack:6},
+  whirlwind:{set:"WARRIOR",name:"旋風剣",type:"spell",cost:1,text:"すべてのミニオンに1ダメージ",spell:"whirlwind"},
+  execute:{set:"WARRIOR",name:"止めの一撃",type:"spell",cost:1,text:"ダメージを受けている敵ミニオン1体を破壊",spell:"execute",target:"damagedEnemyMinion"},
+  slam:{set:"WARRIOR",name:"叩きつけ",type:"spell",cost:2,text:"ミニオン1体に2ダメージ。それが生き残ったら、ショップを1枚補充",spell:"slam",target:"anyMinion"},
+
+  // WARLOCK
+  voidwalker:{set:"WARLOCK",name:"ヴォイドウォーカー",type:"minion",cost:1,atk:1,hp:3,text:"挑発",taunt:true},
+  flameimp:{set:"WARLOCK",name:"フレイムインプ",type:"minion",cost:1,atk:3,hp:2,text:"購入時：自分のヒーローに3ダメージ",onPurchase:"self3"},
+  lifetapcultist:{set:"WARLOCK",name:"生命吸収の信徒",type:"minion",cost:2,atk:2,hp:2,text:"購入時：自分のヒーローに2ダメージ。ショップを1枚補充",onPurchase:"lifetap"},
+  succubus:{set:"WARLOCK",name:"サキュバス",type:"minion",cost:2,atk:4,hp:3,text:"購入時：ショップのカード1枚をランダムに廃棄",onPurchase:"discard1"},
+  powercultist:{set:"WARLOCK",name:"凄まじき力の信徒",type:"minion",cost:1,atk:1,hp:1,text:"購入時：右隣りのミニオンをこのターン+4/+4。ターン終了時、そのミニオンを破壊",onPurchase:"powerRight"},
+  voidterror:{set:"WARLOCK",name:"ヴォイドテラー",type:"minion",cost:3,atk:3,hp:3,text:"購入時：隣接する味方ミニオンを破壊し、それらの攻撃力と体力を得る",onPurchase:"voidterror"},
+  pitlord:{set:"WARLOCK",name:"ピットロード",type:"minion",cost:4,atk:5,hp:6,text:"購入時：自分のヒーローに5ダメージ",onPurchase:"self5"},
+  doomguard:{set:"WARLOCK",name:"ドゥームガード",type:"minion",cost:5,atk:5,hp:7,text:"急襲。購入時：ショップのカードをランダムに2枚廃棄",rush:true,onPurchase:"discard2"},
+  dreadinfernal:{set:"WARLOCK",name:"ドレッドインフェルナル",type:"minion",cost:6,atk:6,hp:6,text:"購入時：他のすべてのキャラクターに1ダメージ",onPurchase:"dreadinfernal"},
+  mortalcoil:{set:"WARLOCK",name:"生の苦悩",type:"spell",cost:1,text:"ミニオン1体に1ダメージ。ショップを1枚補充",spell:"mortalcoil",target:"anyMinion"},
+  soulfire:{set:"WARLOCK",name:"魂の炎",type:"spell",cost:1,text:"キャラクター1体に2ダメージ。ショップのカード1枚をランダムに廃棄",spell:"soulfire",target:"anyCharacter"},
+  hellfire:{set:"WARLOCK",name:"地獄の炎",type:"spell",cost:4,text:"すべてのキャラクターに2ダメージ",spell:"hellfire"},
+
+  // PALADIN
+  argentsquire:{set:"PALADIN",name:"アージェントの従騎士",type:"minion",cost:1,atk:1,hp:1,text:"聖なる盾",shield:true},
+  silverinstructor:{set:"PALADIN",name:"銀の手の教官",type:"minion",cost:2,atk:2,hp:2,text:"購入時：1/1の新兵を1体召喚",onPurchase:"recruit"},
+  argentprotector:{set:"PALADIN",name:"アージェントの守護者",type:"minion",cost:2,atk:2,hp:2,text:"購入時：右隣りのミニオンに聖なる盾を付与",onPurchase:"shieldRightNeighbor"},
+  annoyotron:{set:"PALADIN",name:"マジウザオトロン",type:"minion",cost:2,atk:1,hp:2,text:"聖なる盾・挑発",shield:true,taunt:true},
+  aldor:{set:"PALADIN",name:"アルダーの平和の番人",type:"minion",cost:3,atk:3,hp:3,text:"購入時：敵ミニオン1体の攻撃力を1にする",onPurchase:"aldor",target:"enemyMinion"},
+  bloodknight:{set:"PALADIN",name:"ブラッドナイト",type:"minion",cost:3,atk:3,hp:3,text:"購入時：すべてのミニオンの聖なる盾を失わせ、1つにつき+3/+3",onPurchase:"bloodknight"},
+  defenderargus:{set:"PALADIN",name:"アルガスの守護者",type:"minion",cost:4,atk:2,hp:3,text:"購入時：隣接する味方ミニオンを+1/+1し、挑発を付与",onPurchase:"defenderargus"},
+  guardiankings:{set:"PALADIN",name:"王の守護者",type:"minion",cost:6,atk:5,hp:6,text:"急襲。攻撃時：自分のヒーローを2回復",rush:true,onAttack:"heal2"},
+  tirion:{set:"PALADIN",name:"ティリオン・フォードリング",type:"minion",cost:8,atk:6,hp:6,text:"聖なる盾・挑発。死亡時：5/3・急襲の「アッシュブリンガー」を召喚",shield:true,taunt:true,death:"tirion"},
+  equality:{set:"PALADIN",name:"平等",type:"spell",cost:2,text:"すべてのミニオンの体力を1にする",spell:"equality"},
+  consecration:{set:"PALADIN",name:"聖別",type:"spell",cost:4,text:"すべての敵キャラクターに2ダメージ",spell:"consecration"},
+  blessingkings:{set:"PALADIN",name:"王の祝福",type:"spell",cost:4,text:"味方ミニオン1体を+4/+4",spell:"blessingkings",target:"friendlyMinion"},
+};
+
+const tokenDefs = {
+  houndToken:{name:"猟犬",type:"minion",cost:0,atk:1,hp:1,text:"急襲",rush:true,token:true,set:"TOKEN"},
+  hyenaToken:{name:"ハイエナ",type:"minion",cost:0,atk:2,hp:2,text:"",token:true,set:"TOKEN"},
+  grimPatronToken:{name:"ぐったりガブ呑み亭の常連",type:"minion",cost:0,atk:3,hp:3,text:"ダメージを受けて生き残るたび、3/3の常連を1体召喚",onDamaged:"grimpatron",token:true,set:"TOKEN"},
+  recruitToken:{name:"銀の手の新兵",type:"minion",cost:0,atk:1,hp:1,text:"",token:true,set:"TOKEN"},
+  ashbringerToken:{name:"アッシュブリンガー",type:"minion",cost:0,atk:5,hp:3,text:"急襲",rush:true,token:true,set:"TOKEN"},
+};
+
+const ALL_IDS = Object.keys(C);
+const SET_META = {
+  HUNTER:{label:"Hunter",desc:"死亡・横展開・フェイス"},
+  MAGE:{label:"Mage",desc:"スペル・凍結・コンボ"},
+  PRIEST:{label:"Priest",desc:"回復・体力・右隣り"},
+  WARRIOR:{label:"Warrior",desc:"自傷・装甲・激怒"},
+  WARLOCK:{label:"Warlock",desc:"代償・廃棄・破壊"},
+  PALADIN:{label:"Paladin",desc:"聖なる盾・新兵・バフ"},
+};
+let selectedSets=[];
+let draft = {pool:[], round:0, batch:[], human:[], npc:[], userPicksNeeded:0, phase:""};
+let game = null;
+let pending = null;
+let selectedAttacker = null;
+let dragPurchase = null;
+
+const joinPeerId = new URLSearchParams(location.search).get("join");
+let netRole = joinPeerId ? "guest" : "host";
+let peer = null;
+let conn = null;
+let netConnected = false;
+let netStage = "lobby";
+let netActionPending = false;
+
+let lastDraftMessage = "ドラフト開始。カードを選んでください。";
+
+
+
+function isHostRole(){return netRole==="host"}
+function localSide(){return netRole==="guest"?"npc":"human"}
+function remoteSide(){return O(localSide())}
+function sideLabel(side){return side==="human"?"ホスト":"ゲスト"}
+function heroElForSide(side){return byId(side===localSide()?"humanHero":"npcHero")}
+function hasLocalChoice(){return !!(game?.choice && game.choice.side===localSide())}
+
+function setNetStatus(text,kind=""){
+  const status=byId("netStatus"),badge=byId("netBadge");
+  if(status)status.textContent=text;
+  if(badge){
+    badge.classList.remove("connected","error");
+    if(kind)badge.classList.add(kind);
+    badge.textContent=kind==="connected"?"接続済み":kind==="error"?"接続エラー":"接続準備中";
+  }
+}
+function setStage(stage){
+  netStage=stage;
+  const network=byId("networkPanel"),classes=byId("classPanel"),draftPanel=byId("draftPanel"),gamePanel=byId("gamePanel");
+  network?.classList.toggle("hidden",stage==="draft"||stage==="game");
+  classes?.classList.toggle("hidden",!(stage==="class"&&isHostRole()));
+  draftPanel?.classList.toggle("hidden",stage!=="draft");
+  gamePanel?.classList.toggle("hidden",stage!=="game");
+}
+function makeInviteUrl(id){
+  const u=new URL(location.href);
+  u.searchParams.set("join",id);
+  u.hash="";
+  return u.toString();
+}
+async function copyInviteUrl(){
+  const input=byId("inviteUrl");if(!input)return;
+  try{await navigator.clipboard.writeText(input.value);setNetStatus(netConnected?"対戦相手と接続済みです。":"招待URLをコピーしました。友達に送ってください。",netConnected?"connected":"")}
+  catch(_){input.focus();input.select();document.execCommand("copy");setNetStatus("招待URLをコピーしました。友達に送ってください。");}
+}
+function cloneNet(v){return v==null?v:JSON.parse(JSON.stringify(v))}
+function buildSnapshot(){
+  let g=cloneNet(game);
+  // Guest does not need the host's hidden deck/shop contents to render or choose legal targets.
+  if(g){
+    g.human.deck=g.human.deck.map(()=>null);
+    g.human.shop=g.human.shop.map(()=>null);
+  }
+  return {stage:netStage,selectedSets:[...selectedSets],draft:cloneNet(draft),game:g,uidCounter,lastDraftMessage};
+}
+function broadcastSnapshot(){
+  if(!isHostRole()||!netConnected||!conn?.open)return;
+  try{conn.send({type:"snapshot",snapshot:buildSnapshot()})}catch(e){console.warn("snapshot send failed",e)}
+}
+function applySnapshot(snap){
+  if(isHostRole()||!snap)return;
+  selectedSets=Array.isArray(snap.selectedSets)?snap.selectedSets:[];
+  if(snap.draft)draft=snap.draft;
+  game=snap.game||null;
+  uidCounter=Math.max(uidCounter,Number(snap.uidCounter)||1);
+  lastDraftMessage=snap.lastDraftMessage||lastDraftMessage;
+  pending=null;selectedAttacker=null;dragPurchase=null;netActionPending=false;
+  clearPlacementOverlay();clearDragHighlights();
+  setStage(snap.stage||"lobby");
+  if(netStage==="draft")renderDraft();
+  else if(netStage==="game")render();
+  else if(netStage==="class")setNetStatus("接続しました。ホストが使用セットを選んでいます。","connected");
+}
+function sendLocalAction(action,payload={}){
+  if(!netConnected)return false;
+  if(isHostRole()){
+    hostApplyAction("human",action,payload);
+    return true;
+  }
+  if(!conn?.open||netActionPending)return false;
+  netActionPending=true;
+  conn.send({type:"action",action,payload});
+  if(netStage==="draft")renderDraft(); else if(netStage==="game")render();
+  return true;
+}
+function validateTarget(side,c,target){
+  if(!c.target)return target==null;
+  const valid=validTargets(side,c.target);
+  if(c.type==="minion"&&valid.length===0)return target==null;
+  if(!target)return false;
+  return valid.some(t=>targetKey(t)===targetKey(target));
+}
+function hostApplyPurchase(side,index,target,placement){
+  if(!game||game.active!==side||game.over||game.animating||game.choice)return false;
+  const p=P(side);normalizeShopFlags(side);
+  if(!Number.isInteger(index)||index<0||index>=p.shop.length)return false;
+  const id=p.shop[index],c=C[id];if(!c)return false;
+  if(spellCost(side,id)>p.mana)return false;
+  if(c.type==="minion"&&p.board.length>=CONFIG.boardLimit)return false;
+  if(c.type==="minion"&&placement!=null&&(!Number.isInteger(placement)||placement<0||placement>p.board.length))return false;
+  if(!validateTarget(side,c,target))return false;
+  return buyFromShop(side,index,target,placement);
+}
+function hostResolveStartChoice(side,target){
+  if(!game?.choice||game.choice.side!==side)return false;
+  const ch=game.choice;
+  if(!ch.targets.some(t=>targetKey(t)===targetKey(target)))return false;
+  game.choice=null;
+  if(ch.effect==="lightpriest")applyHealing(side,target,2,"光の侍祭");
+  processNextStartEffect(side);
+  return true;
+}
+function hostEndTurn(side){
+  if(!game||game.active!==side||game.over||game.animating||game.choice)return false;
+  P(side).board.forEach(m=>m.summonedThisTurn=false);
+  processEndTurn(side);
+  cleanupShopAtEnd(side);
+  startTurn(O(side));
+  return true;
+}
+function hostApplyAction(side,action,payload={}){
+  if(!isHostRole())return;
+  if(action==="draftPick"){
+    if(netStage==="draft")hostDraftPick(side,payload.id);
+    else broadcastSnapshot();
+    return;
+  }
+  if(netStage!=="game"||!game){broadcastSnapshot();return}
+  let ok=false;
+  if(action==="reroll"){
+    if(game.active===side&&!game.over&&!game.animating&&!game.choice){ok=rerollShop(side);if(ok)render()}
+  }else if(action==="freeze"){
+    const p=P(side);normalizeShopFlags(side);
+    const i=payload.index;
+    if(game.active===side&&!game.over&&!game.animating&&!game.choice&&Number.isInteger(i)&&i>=0&&i<p.shop.length){
+      p.shopFrozenFlags[i]=!p.shopFrozenFlags[i];
+      log(`${C[p.shop[i]].name}を${p.shopFrozenFlags[i]?"フリーズ":"フリーズ解除"}。`);ok=true;render();
+    }
+  }else if(action==="buy"){
+    ok=hostApplyPurchase(side,payload.index,payload.target??null,payload.placement??null);
+  }else if(action==="attack"){
+    if(game.active===side&&!game.over&&!game.choice)ok=attack(side,payload.attUid,payload.target);
+  }else if(action==="endTurn"){
+    ok=hostEndTurn(side);
+  }else if(action==="startEffectTarget"){
+    ok=hostResolveStartChoice(side,payload.target);
+  }
+  if(!ok)broadcastSnapshot();
+}
+function handleNetMessage(msg){
+  if(!msg||typeof msg!=="object")return;
+  if(isHostRole()){
+    if(msg.type==="action")hostApplyAction("npc",msg.action,msg.payload||{});
+  }else if(msg.type==="snapshot")applySnapshot(msg.snapshot);
+  else if(msg.type==="reject"){setNetStatus("この部屋にはすでに対戦相手がいます。","error")}
+}
+function bindConnection(c){
+  conn=c;
+  c.on("open",()=>{
+    netConnected=true;netActionPending=false;
+    if(isHostRole()){
+      setNetStatus("対戦相手が参加しました。使用する2セットを選んでください。","connected");
+      netStage="class";setStage("class");renderClassSelection();broadcastSnapshot();
+    }else{
+      setNetStatus("ホストに接続しました。ゲーム開始を待っています。","connected");
+    }
+  });
+  c.on("data",handleNetMessage);
+  c.on("close",()=>{
+    netConnected=false;netActionPending=false;
+    setNetStatus("接続が切れました。ホストはページを再読み込みして新しい招待URLを作ってください。","error");
+    if(game)render();
+  });
+  c.on("error",e=>{console.error(e);setNetStatus("P2P通信でエラーが発生しました。","error")});
+}
+function initNetwork(){
+  setStage("lobby");
+  const role=byId("netRoleLabel"),inviteBox=byId("inviteBox");
+  if(typeof Peer==="undefined"){
+    setNetStatus("PeerJSの読み込みに失敗しました。ネット接続を確認してください。","error");return;
+  }
+  if(isHostRole()){
+    if(role)role.textContent="あなたがホストです。招待URLを友達に送ります。";
+    peer=new Peer({debug:1});
+    peer.on("open",id=>{
+      const url=makeInviteUrl(id);byId("inviteUrl").value=url;inviteBox?.classList.remove("hidden");
+      setNetStatus("招待URLを友達に送って、参加を待ってください。");
+    });
+    peer.on("connection",c=>{
+      if(conn&&netConnected){c.on("open",()=>{c.send({type:"reject"});c.close()});return}
+      bindConnection(c);
+    });
+  }else{
+    if(role)role.textContent="招待された対戦に参加します。";
+    inviteBox?.classList.add("hidden");
+    setNetStatus("ホストに接続しています...");
+    peer=new Peer({debug:1});
+    peer.on("open",()=>{
+      const c=peer.connect(joinPeerId,{reliable:true});
+      bindConnection(c);
+    });
+  }
+  peer.on("error",e=>{
+    console.error("Peer error",e);
+    const msg=e?.type==="peer-unavailable"?"ホストが見つかりません。招待URLが古いか、ホストのページが閉じています。":"接続エラー: "+(e?.type||e?.message||"unknown");
+    setNetStatus(msg,"error");
+  });
+}
+
+function initClassSelection(){
+  const grid=byId("classGrid");
+  grid.innerHTML="";
+  Object.entries(SET_META).forEach(([id,meta])=>{
+    const b=document.createElement("button");
+    b.className="class-choice";
+    b.dataset.set=id;
+    b.innerHTML=`<b>${meta.label}</b><span>${meta.desc}</span>`;
+    b.onclick=()=>toggleClassSet(id);
+    grid.appendChild(b);
+  });
+  renderClassSelection();
+}
+function toggleClassSet(id){
+  if(selectedSets.includes(id))selectedSets=selectedSets.filter(x=>x!==id);
+  else{
+    if(selectedSets.length>=2)return;
+    selectedSets.push(id);
+  }
+  renderClassSelection();
+}
+function randomizeClassSets(){
+  const ids=Object.keys(SET_META);
+  const shuffled=shuffle(ids);
+  selectedSets=shuffled.slice(0,2);
+  renderClassSelection();
+}
+
+function renderClassSelection(){
+  document.querySelectorAll(".class-choice").forEach(el=>el.classList.toggle("selected",selectedSets.includes(el.dataset.set)));
+  byId("classStartBtn").disabled=selectedSets.length!==2||!netConnected||!isHostRole();
+}
+
+function beginSelectedDraft(){
+  if(!isHostRole()||!netConnected||selectedSets.length!==2)return;
+  const ids=ALL_IDS.filter(id=>selectedSets.includes(C[id].set));
+  if(ids.length!==24){alert(`選択セットのカード数が24枚ではありません: ${ids.length}`);return}
+  draft={pool:shuffle(ids),round:0,batch:[],human:[],npc:[],sequence:[],pickIndex:0,currentPicker:null,phase:""};
+  lastDraftMessage=`${selectedSets.map(x=>SET_META[x].label).join(" + ")} でドラフト開始`;
+  setStage("draft");
+  startDraftRound();
+}
+function modalCardHtml(id){
+  const d=C[id]||tokenDefs[id];
+  if(!d)return `<div class="modal-item">不明なカード: ${id}</div>`;
+  return `<div class="modal-item ${d.type==="spell"?"spell-card":"minion-card"}">
+    <div class="between"><span class="name">${d.name}</span><span class="pill">${d.cost ?? 0}</span></div>
+    <div class="sub">${d.type==="minion"?`${d.atk}/${d.hp} ミニオン`:"スペル"} / ${d.set||""}</div>
+    <div class="text" style="margin-top:6px">${d.text||""}</div>
+  </div>`;
+}
+function openCardModal(title,sub,ids){
+  const modal=byId("cardModal"),grid=byId("modalGrid");
+  byId("modalTitle").textContent=title;
+  byId("modalSub").textContent=sub||"";
+  grid.innerHTML=ids.length?ids.map(modalCardHtml).join(""):`<div class="modal-empty">カードはありません。</div>`;
+  modal.classList.remove("hidden");
+}
+function closeCardModal(){byId("cardModal")?.classList.add("hidden")}
+
+function showDeckModal(){
+  const side=localSide();
+  if(game){
+    openCardModal("自分のデッキ",`現在デッキに残っている ${P(side).deck.length} 枚`,[...P(side).deck].filter(Boolean));
+  }else{
+    const ids=draft?.[side]||[];
+    openCardModal("自分のドラフト済みカード",`${ids.length}/12 枚`,[...ids]);
+  }
+}
+
+function showDiscardModal(){
+  const side=localSide();
+  if(game){
+    openCardModal("自分の捨て札",`${P(side).discard.length} 枚`,[...P(side).discard]);
+  }else{
+    openCardModal("捨て札","ドラフト中は捨て札はありません。",[]);
+  }
+}
+
+function showDraftPickMessage(who,id){
+  const d=C[id],banner=byId("draftPickBanner");
+  lastDraftMessage=`${who}が「${d.name}」を獲得`;
+  if(!banner)return;
+  banner.innerHTML=`<span>${who}が</span><span class="draft-pick-card">${d.name}</span><span>を獲得</span>`;
+  banner.classList.remove("pop"); void banner.offsetWidth; banner.classList.add("pop");
+}
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function log(msg){if(!game)return;game.log.push(msg);renderLog()}
+
+function byId(id){return document.getElementById(id)}
+function minionEl(uid){return byId(`minion-${uid}`)}
+function runClass(el,cls,ms=650){
+  if(!el)return;
+  el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+  setTimeout(()=>el.classList.remove(cls),ms);
+}
+function floatFx(el,text){
+  if(!el)return;
+  const r=el.getBoundingClientRect(), d=document.createElement("div");
+  d.className="fx-float";d.textContent=text;
+  d.style.left=(r.left+r.width/2)+"px";d.style.top=(r.top+r.height/2)+"px";
+  document.body.appendChild(d);setTimeout(()=>d.remove(),800);
+}
+function burstFx(el){
+  if(!el)return;
+  const r=el.getBoundingClientRect(),d=document.createElement("div");
+  d.className="fx-burst";d.style.left=(r.left+r.width/2)+"px";d.style.top=(r.top+r.height/2)+"px";
+  document.body.appendChild(d);setTimeout(()=>d.remove(),500);
+}
+function showDamageMinion(uid,n){
+  const el=minionEl(uid); if(!el)return; floatFx(el,`-${n}`); setTimeout(()=>runClass(minionEl(uid),"damage-flash",450),0);
+}
+
+function showDamageHero(side,n){
+  const el=heroElForSide(side);if(!el)return;floatFx(el,`-${n}`);setTimeout(()=>runClass(heroElForSide(side),"hero-hit",430),0);
+}
+function cardScore(id){
+  const c=C[id]; let s=c.cost*1.8+(c.type==="minion"?(c.atk+c.hp)*0.45:2.8);
+  if(["flamewaker","manawyrm","hyena","juggler","highmane","antonidas","doomsayer","northshire","frothing","grimpatron","grommash","voidterror","bloodknight","tirion"].includes(id)) s+=2;
+  if(c.type==="spell") s+=1;
+  return s+Math.random()*1.2;
+}
+
+function startDraftRound(){
+  if(!isHostRole())return;
+  if(draft.pool.length===0){setTimeout(startGame,350);return}
+  draft.round++;
+  draft.batch=draft.pool.splice(0,4);
+  draft.sequence=draft.round%2===1?["human","npc","npc","human"]:["npc","human","human","npc"];
+  draft.pickIndex=0;
+  draft.currentPicker=draft.sequence[0];
+  draft.phase="pvp";
+  lastDraftMessage=`Round ${draft.round}: ${sideLabel(draft.currentPicker)}が選択`;
+  renderDraft();
+}
+
+function npcPickFromBatch(){return null}
+function removeBatch(id){draft.batch.splice(draft.batch.indexOf(id),1)}
+
+function humanDraftPick(id){
+  if(netActionPending||draft.currentPicker!==localSide()||!draft.batch.includes(id))return;
+  sendLocalAction("draftPick",{id});
+}
+function hostDraftPick(side,id){
+  if(!isHostRole()||netStage!=="draft"||draft.currentPicker!==side||!draft.batch.includes(id)){
+    broadcastSnapshot();return false;
+  }
+  draft[side].push(id);
+  removeBatch(id);
+  showDraftPickMessage(sideLabel(side),id);
+  draft.pickIndex++;
+  if(draft.pickIndex>=draft.sequence.length){
+    draft.currentPicker=null;
+    renderDraft();
+    setTimeout(startDraftRound,350);
+  }else{
+    draft.currentPicker=draft.sequence[draft.pickIndex];
+    renderDraft();
+  }
+  return true;
+}
+
+function renderDraft(){
+  const me=localSide(),opp=O(me);
+  byId("humanCount").textContent=(draft[me]||[]).length;
+  byId("npcCount").textContent=(draft[opp]||[]).length;
+  const mine=draft.currentPicker===me;
+  byId("draftStatus").textContent=draft.currentPicker==null?
+    `Round ${draft.round}/6 — 次のラウンドへ`:
+    `Round ${draft.round}/6 — ${mine?"あなたが1枚選んでください":"相手が選択中"}`;
+  const banner=byId("draftPickBanner");if(banner)banner.textContent=lastDraftMessage;
+  const g=byId("draftGrid"); g.innerHTML="";
+  draft.batch.forEach(id=>{
+    const c=C[id], d=document.createElement("div"); d.className=`draft-card ${c.type==="spell"?"spell-card":"minion-card"}`;
+    d.innerHTML=`<div class="between"><b>${c.name}</b><span class="pill">${c.set}</span></div>
+    <div class="sub">${c.type==="minion"?`${c.cost}マナ ${c.atk}/${c.hp}`:`${c.cost}マナ スペル`}</div>
+    <div style="margin-top:8px">${c.text}</div>`;
+    if(mine&&!netActionPending){d.onclick=()=>humanDraftPick(id)} else d.classList.add("disabled");
+    g.appendChild(d);
+  });
+  broadcastSnapshot();
+}
+function mkPlayer(name,ids){
+  return {name,hp:CONFIG.heroHp,armor:0,maxMana:0,mana:0,deck:shuffle([...ids]),shop:[],shopFrozenFlags:[],board:[],discard:[],exile:[],
+    diedThisTurn:false,spellDiscountUsed:false,rerollCount:0};
+}
+
+function startGame(){
+  if(!isHostRole())return;
+  setStage("game");
+  game={turn:0,active:"human",human:mkPlayer("ホスト",draft.human),npc:mkPlayer("ゲスト",draft.npc),log:[],over:false,animating:false,choice:null};
+  game.npc.maxMana=1;
+  log(`=== Battle Start: ${selectedSets.map(x=>SET_META[x].label).join(" + ")} ===`);
+  startTurn("human");
+}
+function makeInstance(id){
+  const d=C[id]||tokenDefs[id];
+  return {uid:newUid(),id,name:d.name,baseAtk:d.atk||0,maxHp:d.hp||0,hp:d.hp||0,atkBuff:0,hpBuff:0,
+    taunt:!!d.taunt,shield:!!d.shield,frozen:0,thawAtEnd:false,canAttack:false,summonedThisTurn:true,token:!!d.token,destroyAtEnd:false};
+}
+function P(side){return game[side]}
+function O(side){return side==="human"?"npc":"human"}
+function drawOne(side){
+  const p=P(side);
+  if(p.deck.length===0 && p.discard.length){
+    p.deck=shuffle(p.discard.splice(0));
+    log(`${p.name}の捨て札をシャッフルしてデッキに戻した。`);
+  }
+  return p.deck.length?p.deck.shift():null;
+}
+function normalizeShopFlags(side){
+  const p=P(side);
+  while(p.shopFrozenFlags.length<p.shop.length)p.shopFrozenFlags.push(false);
+  if(p.shopFrozenFlags.length>p.shop.length)p.shopFrozenFlags.length=p.shop.length;
+}
+function pushShopCard(side,id,frozen=false){
+  const p=P(side);
+  p.shop.push(id);
+  p.shopFrozenFlags.push(!!frozen);
+}
+function refillShop(side,target=CONFIG.shopBase){
+  const p=P(side);
+  normalizeShopFlags(side);
+  while(p.shop.length<target){
+    const id=drawOne(side); if(!id)break;
+    pushShopCard(side,id,false);
+  }
+}
+function prepareShopForTurn(side){
+  const p=P(side);
+  normalizeShopFlags(side);
+  const carried=p.shop.length;
+  refillShop(side,CONFIG.shopBase);
+  if(carried>0)log(`${p.name}はフリーズした${carried}枚を引き継いだ。`);
+  // Previous-turn freeze only preserves the card into this turn.
+  // Once the turn starts, cards thaw and must be frozen again to survive another refresh.
+  p.shopFrozenFlags=p.shop.map(()=>false);
+  p.rerollCount=0;
+}
+function cleanupShopAtEnd(side){
+  const p=P(side);
+  normalizeShopFlags(side);
+  const kept=[],keptFlags=[],discarded=[];
+  p.shop.forEach((id,i)=>{
+    if(p.shopFrozenFlags[i]){
+      kept.push(id);keptFlags.push(true);
+    }else{
+      discarded.push(id);
+    }
+  });
+  if(discarded.length){
+    p.discard.push(...discarded);
+    log(`${p.name}の未フリーズショップ${discarded.length}枚を捨て札へ。`);
+  }
+  if(kept.length)log(`${p.name}はショップ${kept.length}枚をフリーズして持ち越す。`);
+  p.shop=kept;
+  p.shopFrozenFlags=keptFlags;
+}
+function addShopCard(side,id){pushShopCard(side,id,false)}
+function rerollCost(side){return 1+P(side).rerollCount}
+function hasRerollableCards(side){
+  const p=P(side);normalizeShopFlags(side);
+  return p.shop.some((_,i)=>!p.shopFrozenFlags[i]);
+}
+function rerollShop(side){
+  const p=P(side);normalizeShopFlags(side);
+  const cost=rerollCost(side);
+  if(p.mana<cost || !hasRerollableCards(side))return false;
+
+  p.mana-=cost;
+  p.rerollCount+=1;
+
+  const kept=[],keptFlags=[],discarded=[];
+  p.shop.forEach((id,i)=>{
+    if(p.shopFrozenFlags[i]){kept.push(id);keptFlags.push(true)}
+    else discarded.push(id);
+  });
+  if(discarded.length)p.discard.push(...discarded);
+  p.shop=kept;
+  p.shopFrozenFlags=keptFlags;
+  refillShop(side,CONFIG.shopBase);
+
+  log(`${p.name}がショップをリロール（${cost}マナ）。`);
+  return true;
+}
+
+function rerollHumanShop(){
+  const side=localSide();
+  if(!game||game.active!==side||game.over||game.animating||pending||dragPurchase||game.choice||netActionPending)return;
+  selectedAttacker=null;
+  sendLocalAction("reroll");
+}
+
+function toggleCardFreeze(index){
+  const side=localSide();
+  if(!game||game.active!==side||game.over||game.animating||pending||dragPurchase||game.choice||netActionPending)return;
+  sendLocalAction("freeze",{index});
+}
+function effectiveAttack(side,m){
+  const def=C[m.id]||tokenDefs[m.id]||{};
+  let atk=def.attackEqualsHealth?m.hp:(m.baseAtk+m.atkBuff);
+  if(def.enrageAttack && m.hp<m.maxHp)atk+=def.enrageAttack;
+  const b=P(side).board, idx=b.findIndex(x=>x.uid===m.uid);
+  [idx-1,idx+1].forEach(i=>{if(i>=0&&i<b.length){const ndef=C[b[i].id]||{};if(ndef.aura==="direwolf")atk+=1}});
+  return Math.max(0,atk);
+}
+function hasRhino(side){return P(side).board.some(m=>(C[m.id]||{}).aura==="rhino")}
+function hasAuchenai(side){return P(side).board.some(m=>(C[m.id]||{}).aura==="auchenai")}
+function rightNeighbor(side,m){
+  const b=P(side).board,idx=b.findIndex(x=>x.uid===m.uid);
+  return idx>=0&&idx+1<b.length?b[idx+1]:null;
+}
+function adjacentMinions(side,m){
+  const b=P(side).board,idx=b.findIndex(x=>x.uid===m.uid),out=[];
+  if(idx>0)out.push(b[idx-1]);
+  if(idx>=0&&idx+1<b.length)out.push(b[idx+1]);
+  return out;
+}
+function hasTaunt(side){return P(side).board.some(m=>m.taunt)}
+function spellDamage(side){return P(side).board.reduce((n,m)=>n+((C[m.id]||{}).spellDamage||0),0)}
+function spellCost(side,id){
+  let c=C[id].cost;
+  if(C[id].type==="spell" && !P(side).spellDiscountUsed && P(side).board.some(m=>(C[m.id]||{}).aura==="apprentice")) c=Math.max(0,c-1);
+  return c;
+}
+function startTurn(side){
+  if(game.over)return;
+  game.active=side; game.turn++;
+  const p=P(side); p.diedThisTurn=false;p.spellDiscountUsed=false;
+  p.maxMana=Math.min(CONFIG.maxMana,p.maxMana+1);p.mana=p.maxMana;
+
+  const dooms=p.board.filter(m=>(C[m.id]||{}).start==="doomsayer");
+  if(dooms.length){
+    log(`${p.name}の終末預言者が発動！`);
+    destroyAllMinions();
+  }
+
+  for(const m of p.board){
+    if(m.frozen>0){
+      m.canAttack=false;
+      m.thawAtEnd=true;
+      log(`${m.name}は凍結しているため、このターン攻撃できない。`);
+    }else{
+      m.canAttack=true;
+      m.thawAtEnd=false;
+    }
+    m.summonedThisTurn=false;
+  }
+  prepareShopForTurn(side);
+  log(`--- ${p.name}のターン (${p.mana}/${p.maxMana}マナ) ---`);
+
+  game.startEffectQueue=p.board.filter(m=>(C[m.id]||{}).start==="lightpriest").map(m=>m.uid);
+  render();
+  processNextStartEffect(side);
+}
+function chooseAutoHealTarget(side){
+  if(hasAuchenai(side)){
+    const opp=O(side);
+    const enemyMinions=P(opp).board.filter(m=>m.hp>0).sort((a,b)=>a.hp-b.hp);
+    return enemyMinions.length?{side:opp,kind:"minion",uid:enemyMinions[0].uid}:{side:opp,kind:"hero"};
+  }
+  const damaged=P(side).board.filter(m=>m.hp<m.maxHp).sort((a,b)=>(b.maxHp-b.hp)-(a.maxHp-a.hp));
+  if(damaged.length)return {side,kind:"minion",uid:damaged[0].uid};
+  if(P(side).hp<CONFIG.heroHp)return {side,kind:"hero"};
+  return {side,kind:"hero"};
+}
+
+function processNextStartEffect(side){
+  if(!isHostRole()||game.over)return;
+  const q=game.startEffectQueue||[];
+  while(q.length){
+    const uid=q.shift();
+    const m=P(side).board.find(x=>x.uid===uid);
+    if(!m)continue;
+    game.choice={kind:"startEffect",effect:"lightpriest",side,sourceUid:uid,targets:validTargets(side,"anyCharacter")};
+    render();return;
+  }
+  game.startEffectQueue=[];
+  game.choice=null;
+  render();
+}
+function destroyAllMinions(){
+  for(const side of ["human","npc"]){
+    const ids=P(side).board.map(m=>m.uid);
+    ids.forEach(uid=>destroyMinion(side,uid,"destroy"));
+  }
+}
+function summon(side,id,opts={}){
+  const p=P(side); if(p.board.length>=CONFIG.boardLimit)return false;
+  const m=makeInstance(id);
+  if(opts.atk!==undefined){m.baseAtk=opts.atk;m.maxHp=opts.hp;m.hp=opts.hp}
+  const d=C[id]||tokenDefs[id]||{};
+  if(d.rush || hasRhino(side)){m.canAttack=true}
+  const pos = Number.isInteger(opts.position) ? Math.max(0,Math.min(opts.position,p.board.length)) : p.board.length;
+  p.board.splice(pos,0,m);
+  log(`${p.name}は${m.name}を召喚。`);
+  triggerSummon(side,m);
+  return m;
+}
+function triggerSummon(side,newM){
+  const p=P(side);
+  const jugglers=p.board.filter(m=>m.uid!==newM.uid && (C[m.id]||{}).trigger==="juggler");
+  jugglers.forEach(()=>randomEnemyDamage(side,1,"ナイフ・ジャグラー"));
+}
+function randomEnemyDamage(side,amount,source){
+  const opp=O(side), targets=[...P(opp).board.map(m=>({kind:"minion",uid:m.uid})),{kind:"hero"}];
+  if(!targets.length)return;
+  const t=targets[Math.floor(Math.random()*targets.length)];
+  if(t.kind==="hero") damageHero(opp,amount,source); else damageMinion(opp,t.uid,amount,source);
+}
+function damageHero(side,amount,source=""){
+  const p=P(side); let left=amount;
+  if(p.armor>0){const a=Math.min(p.armor,left);p.armor-=a;left-=a}
+  p.hp-=left;
+  log(`${p.name}のヒーローに${amount}ダメージ${source?` (${source})`:""}。`);
+  setTimeout(()=>showDamageHero(side,amount),0);
+  checkGameOver();
+}
+function notifyHealing(target,actual){
+  if(actual<=0)return;
+  for(const side of ["human","npc"]){
+    P(side).board.filter(m=>(C[m.id]||{}).trigger==="lightwarden").forEach(m=>{
+      m.atkBuff+=1;log(`${m.name}の攻撃力+1。`);
+    });
+    if(target.kind==="minion"){
+      P(side).board.filter(m=>(C[m.id]||{}).trigger==="northshire").forEach(m=>{
+        addShopDraw(side,1);log(`${m.name}: ショップ+1。`);
+      });
+    }
+  }
+}
+function applyHealing(sourceSide,target,amount,source="回復"){
+  if(hasAuchenai(sourceSide)){
+    dealTargetDamage(target,amount,`${source}（オウケナイ）`);
+    return;
+  }
+  if(target.kind==="hero"){
+    const p=P(target.side),old=p.hp;
+    p.hp=Math.min(CONFIG.heroHp,p.hp+amount);
+    const actual=p.hp-old;
+    log(`${p.name}のヒーローを${actual}回復。`);
+    if(actual>0)setTimeout(()=>runClass(byId(`${target.side}Hero`),"heal-flash",480),0);
+    notifyHealing(target,actual);
+  }else{
+    const m=P(target.side).board.find(x=>x.uid===target.uid);if(!m)return;
+    const old=m.hp;m.hp=Math.min(m.maxHp,m.hp+amount);
+    const actual=m.hp-old;
+    log(`${m.name}を${actual}回復。`);
+    if(actual>0)setTimeout(()=>runClass(minionEl(m.uid),"heal-flash",480),0);
+    notifyHealing(target,actual);
+  }
+}
+function damageMinion(side,uid,amount,source=""){
+  const p=P(side),m=p.board.find(x=>x.uid===uid); if(!m)return 0;
+  if(m.shield){m.shield=false;log(`${m.name}の聖なる盾がダメージを防いだ。`);return 0}
+  const oldEl=minionEl(uid);if(oldEl)floatFx(oldEl,`-${amount}`);
+  m.hp-=amount;log(`${m.name}に${amount}ダメージ${source?` (${source})`:""}。`);
+  if(m.hp>0)setTimeout(()=>runClass(minionEl(uid),"damage-flash",450),0);
+
+  // Warrior damage triggers
+  P(side).board.filter(x=>(C[x.id]||{}).trigger==="armorsmith").forEach(()=>{
+    P(side).armor+=1;log(`${P(side).name}は装甲を1得た。`);
+  });
+  for(const owner of ["human","npc"]){
+    P(owner).board.filter(x=>(C[x.id]||{}).trigger==="frothing").forEach(f=>{
+      f.atkBuff+=1;log(`${f.name}の攻撃力+1。`);
+    });
+  }
+
+  const d=C[m.id]||tokenDefs[m.id]||{};
+  if(d.onDamaged==="acolyte" && amount>0){addShopDraw(side,1);log(`${m.name}: ショップ+1`)}
+  if(d.onDamaged==="grimpatron" && amount>0 && m.hp>0 && P(side).board.length<CONFIG.boardLimit){
+    summon(side,"grimPatronToken");log(`${m.name}が仲間を呼んだ。`);
+  }
+  if(m.hp<=0)destroyMinion(side,uid,"damage");
+  return amount;
+}
+function addShopDraw(side,n){for(let i=0;i<n;i++){const id=drawOne(side);if(id)pushShopCard(side,id,false)}}
+function discardRandomShop(side,n){
+  const p=P(side);normalizeShopFlags(side);
+  for(let i=0;i<n;i++){
+    if(!p.shop.length)break;
+    const idx=Math.floor(Math.random()*p.shop.length);
+    const [id]=p.shop.splice(idx,1);
+    p.shopFrozenFlags.splice(idx,1);
+    p.exile.push(id);
+    log(`${p.name}は「${C[id].name}」を廃棄した。`);
+  }
+}
+function destroyMinion(side,uid,reason){
+  const p=P(side),idx=p.board.findIndex(x=>x.uid===uid); if(idx<0)return;
+  const m=p.board[idx];const deadEl=minionEl(uid);if(deadEl)burstFx(deadEl);p.board.splice(idx,1);
+  if(!m.token)p.discard.push(m.id);
+  p.diedThisTurn=true;
+  log(`${m.name}が死亡。`);
+  p.board.filter(x=>(C[x.id]||{}).trigger==="hyena").forEach(h=>{h.atkBuff+=1;h.maxHp+=1;h.hp+=1;log(`腐肉食いのハイエナが+1/+1。`)});
+  const d=C[m.id]||tokenDefs[m.id]||{};
+  if(d.death==="leper")damageHero(O(side),1,"厄介なノーム");
+  if(d.death==="thalnos"){addShopDraw(side,1);log(`${p.name}のショップ+1。`)}
+  if(d.death==="highmane"){for(let i=0;i<2;i++)if(P(side).board.length<CONFIG.boardLimit)summon(side,"hyenaToken")}
+  if(d.death==="tirion" && P(side).board.length<CONFIG.boardLimit)summon(side,"ashbringerToken");
+}
+function processEndTurn(side){
+  const p=P(side);
+  const ids=p.board.filter(m=>m.destroyAtEnd).map(m=>m.uid);
+  ids.forEach(uid=>destroyMinion(side,uid,"endTurn"));
+
+  // Frozen minions that began this turn frozen thaw only after the turn ends.
+  // This keeps the UI and the attack restriction consistent for the whole turn.
+  p.board.forEach(m=>{
+    if(m.thawAtEnd){
+      m.frozen=0;
+      m.thawAtEnd=false;
+      log(`${m.name}の凍結が解除された。`);
+    }
+  });
+}
+function spellCastTriggers(side){
+  const p=P(side);
+  for(const m of [...p.board]){
+    const d=C[m.id]||{};
+    if(d.trigger==="manawyrm"){m.atkBuff+=1;log(`マナ・ワームの攻撃力+1。`)}
+    if(d.trigger==="flamewaker"){randomEnemyDamage(side,1,"フレイムウェイカー");randomEnemyDamage(side,1,"フレイムウェイカー")}
+    if(d.trigger==="antonidas"){addShopCard(side,"fireball");log(`アントニダスがファイアーボールをショップに生成。`)}
+  }
+}
+function validTargets(side,targetType,sourceUid=null){
+  const own=P(side),opp=P(O(side)),arr=[];
+  if(targetType==="friendlyMinionOther") own.board.filter(m=>m.uid!==sourceUid).forEach(m=>arr.push({side,kind:"minion",uid:m.uid}));
+  if(targetType==="friendlyMinion") own.board.forEach(m=>arr.push({side,kind:"minion",uid:m.uid}));
+  if(targetType==="enemyMinion") opp.board.forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}));
+  if(targetType==="damagedEnemyMinion") opp.board.filter(m=>m.hp<m.maxHp).forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}));
+  if(targetType==="highAttackMinion"){
+    own.board.filter(m=>effectiveAttack(side,m)>=5).forEach(m=>arr.push({side,kind:"minion",uid:m.uid}));
+    opp.board.filter(m=>effectiveAttack(O(side),m)>=5).forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}));
+  }
+  if(targetType==="anyMinion"){own.board.forEach(m=>arr.push({side,kind:"minion",uid:m.uid}));opp.board.forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}))}
+  if(targetType==="enemyCharacter"){opp.board.forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}));arr.push({side:O(side),kind:"hero"})}
+  if(targetType==="anyCharacter"){own.board.forEach(m=>arr.push({side,kind:"minion",uid:m.uid}));opp.board.forEach(m=>arr.push({side:O(side),kind:"minion",uid:m.uid}));arr.push({side,kind:"hero"},{side:O(side),kind:"hero"})}
+  return arr;
+}
+function buyFromShop(side,index,target=null,placement=null){
+  const p=P(side); const id=p.shop[index]; if(!id)return false;
+  const c=C[id],cost=spellCost(side,id);
+  if(cost>p.mana)return false;
+  if(c.type==="minion"&&p.board.length>=CONFIG.boardLimit)return false;
+  p.mana-=cost;p.shop.splice(index,1);normalizeShopFlags(side);p.shopFrozenFlags.splice(index,1);
+  if(c.type==="minion"){
+    const m=summon(side,id,{position:placement}); if(!m)return false;
+    applyOnPurchase(side,m,c,target);
+  }else{
+    if(c.type==="spell"&&!p.spellDiscountUsed&&P(side).board.some(x=>(C[x.id]||{}).aura==="apprentice"))p.spellDiscountUsed=true;
+    resolveSpell(side,id,target);
+    if(!c.generated)p.discard.push(id);
+    spellCastTriggers(side);
+  }
+  render(); return true;
+}
+function buffMinion(m,atk,hp){
+  m.atkBuff+=atk;m.maxHp+=hp;m.hp+=hp;
+}
+function applyOnPurchase(side,m,c,target){
+  const p=P(side),opp=O(side);
+  if(c.onPurchase==="shootFace")damageHero(opp,2,c.name);
+  if(c.onPurchase==="spark"&&target)dealTargetDamage(target,1,c.name);
+  if(c.onPurchase==="houndmaster"&&target){
+    const t=P(target.side).board.find(x=>x.uid===target.uid);
+    if(t){buffMinion(t,2,2);t.taunt=true;log(`${t.name}が+2/+2と挑発を得た。`)}
+  }
+
+  if(c.onPurchase==="injuredblademaster")damageMinion(side,m.uid,4,c.name);
+  if(c.onPurchase==="doubleRightHealth"){
+    const t=rightNeighbor(side,m);if(t){t.maxHp*=2;t.hp*=2;log(`${t.name}の体力が2倍になった。`)}
+  }
+  if(c.onPurchase==="innerFireRight"){
+    const t=rightNeighbor(side,m);if(t){t.baseAtk=t.hp;t.atkBuff=0;log(`${t.name}の攻撃力が${t.hp}になった。`)}
+  }
+  if(c.onPurchase==="shieldRight"){
+    const t=rightNeighbor(side,m);if(t){buffMinion(t,0,2);log(`${t.name}の体力+2。`)}
+    addShopDraw(side,1);
+  }
+
+  if(c.onPurchase==="armor2"){p.armor+=2;log(`${p.name}は装甲を2得た。`)}
+  if(c.onPurchase==="taskmaster"&&target){
+    dealTargetDamage(target,1,c.name);
+    if(target.kind==="minion"){
+      const t=P(target.side).board.find(x=>x.uid===target.uid);if(t){t.atkBuff+=2;log(`${t.name}の攻撃力+2。`)}
+    }
+  }
+  if(c.onPurchase==="brawl"){
+    const all=[...P("human").board.map(x=>({side:"human",uid:x.uid})),...P("npc").board.map(x=>({side:"npc",uid:x.uid}))];
+    if(all.length){
+      const survivor=all[Math.floor(Math.random()*all.length)];
+      log(`乱闘！ 生き残るのは ${P(survivor.side).board.find(x=>x.uid===survivor.uid)?.name||"?"}。`);
+      all.filter(x=>!(x.side===survivor.side&&x.uid===survivor.uid)).forEach(x=>destroyMinion(x.side,x.uid,"brawl"));
+    }
+  }
+
+  if(c.onPurchase==="self3")damageHero(side,3,c.name);
+  if(c.onPurchase==="lifetap"){damageHero(side,2,c.name);addShopDraw(side,1)}
+  if(c.onPurchase==="discard1")discardRandomShop(side,1);
+  if(c.onPurchase==="discard2")discardRandomShop(side,2);
+  if(c.onPurchase==="powerRight"){
+    const t=rightNeighbor(side,m);if(t){buffMinion(t,4,4);t.destroyAtEnd=true;log(`${t.name}がこのターン+4/+4。終了時に破壊される。`)}
+  }
+  if(c.onPurchase==="voidterror"){
+    const neighbors=adjacentMinions(side,m).map(x=>({uid:x.uid,atk:effectiveAttack(side,x),hp:x.hp,name:x.name}));
+    let gainAtk=0,gainHp=0;
+    neighbors.forEach(x=>{gainAtk+=x.atk;gainHp+=x.hp;destroyMinion(side,x.uid,"voidterror")});
+    if(P(side).board.some(x=>x.uid===m.uid)){buffMinion(m,gainAtk,gainHp);log(`${m.name}が+${gainAtk}/+${gainHp}を得た。`)}
+  }
+  if(c.onPurchase==="self5")damageHero(side,5,c.name);
+  if(c.onPurchase==="dreadinfernal"){
+    const targets=[];
+    for(const ss of ["human","npc"])P(ss).board.filter(x=>x.uid!==m.uid).forEach(x=>targets.push({side:ss,kind:"minion",uid:x.uid}));
+    damageHero("human",1,c.name);damageHero("npc",1,c.name);
+    targets.forEach(t=>{if(P(t.side).board.some(x=>x.uid===t.uid))dealTargetDamage(t,1,c.name)});
+  }
+
+  if(c.onPurchase==="recruit"){
+    const idx=p.board.findIndex(x=>x.uid===m.uid);
+    if(p.board.length<CONFIG.boardLimit)summon(side,"recruitToken",{position:idx+1});
+  }
+  if(c.onPurchase==="shieldRightNeighbor"){
+    const t=rightNeighbor(side,m);if(t){t.shield=true;log(`${t.name}が聖なる盾を得た。`)}
+  }
+  if(c.onPurchase==="aldor"&&target){
+    const t=P(target.side).board.find(x=>x.uid===target.uid);if(t){t.baseAtk=1;t.atkBuff=0;log(`${t.name}の攻撃力が1になった。`)}
+  }
+  if(c.onPurchase==="bloodknight"){
+    let n=0;
+    for(const ss of ["human","npc"])P(ss).board.forEach(x=>{if(x.shield){x.shield=false;n++}});
+    if(n){buffMinion(m,3*n,3*n);log(`${m.name}が聖なる盾${n}枚を吸収し、+${3*n}/+${3*n}。`)}
+  }
+  if(c.onPurchase==="defenderargus"){
+    adjacentMinions(side,m).forEach(t=>{buffMinion(t,1,1);t.taunt=true;log(`${t.name}が+1/+1と挑発を得た。`)});
+  }
+}
+function dealTargetDamage(t,amount,source){
+  if(t.kind==="hero")damageHero(t.side,amount,source); else damageMinion(t.side,t.uid,amount,source);
+}
+function resolveSpell(side,id,target){
+  const d=C[id],sd=spellDamage(side);
+  log(`${P(side).name}は${d.name}を使用。`);
+  if(id==="huntersmark"){
+    const m=P(target.side).board.find(x=>x.uid===target.uid);if(m){m.maxHp=1;m.hp=Math.min(m.hp,1);if(m.hp<=0)destroyMinion(target.side,m.uid,"mark")}
+  }
+  if(id==="killcommand"){dealTargetDamage(target,(P(side).diedThisTurn?5:3)+sd,d.name)}
+  if(id==="unleash"){
+    const n=P(O(side)).board.length; for(let i=0;i<n;i++)if(P(side).board.length<CONFIG.boardLimit)summon(side,"houndToken");
+  }
+  if(id==="frostbolt"){dealTargetDamage(target,CONFIG.frostboltDamage+sd,d.name);freezeTarget(target)}
+  if(id==="frostnova"){P(O(side)).board.forEach(m=>m.frozen=1);log(`敵ミニオンすべてを凍結。`)}
+  if(id==="fireball"){dealTargetDamage(target,CONFIG.fireballDamage+sd,d.name)}
+
+  if(id==="circlehealing"){
+    const converted=hasAuchenai(side);
+    const targets=[];
+    for(const ss of ["human","npc"])P(ss).board.forEach(m=>targets.push({side:ss,kind:"minion",uid:m.uid}));
+    targets.forEach(t=>{
+      if(!P(t.side).board.some(x=>x.uid===t.uid))return;
+      if(converted)dealTargetDamage(t,4,`${d.name}（オウケナイ）`);
+      else applyHealing(side,t,4,d.name);
+    });
+  }
+  if(id==="smallheal")applyHealing(side,target,2,d.name);
+  if(id==="shadowworddeath"&&target)destroyMinion(target.side,target.uid,"shadowworddeath");
+
+  if(id==="whirlwind"){
+    const targets=[];for(const ss of ["human","npc"])P(ss).board.forEach(m=>targets.push({side:ss,uid:m.uid}));
+    targets.forEach(t=>{if(P(t.side).board.some(x=>x.uid===t.uid))damageMinion(t.side,t.uid,1+sd,d.name)});
+  }
+  if(id==="execute"&&target)destroyMinion(target.side,target.uid,"execute");
+  if(id==="slam"&&target){
+    dealTargetDamage(target,2+sd,d.name);
+    if(target.kind==="minion"&&P(target.side).board.some(x=>x.uid===target.uid))addShopDraw(side,1);
+  }
+
+  if(id==="mortalcoil"&&target){dealTargetDamage(target,1+sd,d.name);addShopDraw(side,1)}
+  if(id==="soulfire"&&target){dealTargetDamage(target,2+sd,d.name);discardRandomShop(side,1)}
+  if(id==="hellfire"){
+    damageHero("human",2+sd,d.name);damageHero("npc",2+sd,d.name);
+    const targets=[];for(const ss of ["human","npc"])P(ss).board.forEach(m=>targets.push({side:ss,uid:m.uid}));
+    targets.forEach(t=>{if(P(t.side).board.some(x=>x.uid===t.uid))damageMinion(t.side,t.uid,2+sd,d.name)});
+  }
+
+  if(id==="equality"){
+    for(const ss of ["human","npc"])P(ss).board.forEach(m=>{m.maxHp=1;m.hp=Math.min(m.hp,1)});
+    log(`すべてのミニオンの体力が1になった。`);
+  }
+  if(id==="consecration"){
+    const opp=O(side);damageHero(opp,2+sd,d.name);
+    const ids=P(opp).board.map(m=>m.uid);ids.forEach(uid=>{if(P(opp).board.some(x=>x.uid===uid))damageMinion(opp,uid,2+sd,d.name)});
+  }
+  if(id==="blessingkings"&&target){
+    const m=P(target.side).board.find(x=>x.uid===target.uid);if(m){buffMinion(m,4,4);log(`${m.name}が+4/+4。`)}
+  }
+}
+function freezeTarget(t){if(t.kind==="minion"){const m=P(t.side).board.find(x=>x.uid===t.uid);if(m){m.frozen=1;log(`${m.name}を凍結。`)}}}
+function canAttackTarget(side,m,target){
+  if(!m.canAttack)return false;
+  if(m.frozen>0)return false;
+  if(effectiveAttack(side,m)<=0)return false;
+  const opp=O(side);
+  if(target.side!==opp)return false;
+  if(m.summonedThisTurn){
+    const d=C[m.id]||tokenDefs[m.id]||{};
+    const rush=d.rush||hasRhino(side);
+    if(rush && target.kind==="hero")return false;
+  }
+  if(hasTaunt(opp)){
+    if(target.kind==="hero")return false;
+    const tm=P(opp).board.find(x=>x.uid===target.uid); if(!tm||!tm.taunt)return false;
+  }
+  return true;
+}
+function attack(side,attUid,target){
+  if(game.animating)return false;
+  const p=P(side),m=p.board.find(x=>x.uid===attUid);
+  if(!m||!canAttackTarget(side,m,target))return false;
+  m.canAttack=false;
+  game.animating=true;
+  runClass(minionEl(attUid),"attack-lunge",300);
+  renderControlsOnly();
+  setTimeout(()=>resolveAttack(side,attUid,target),210);
+  return true;
+}
+function resolveAttack(side,attUid,target){
+  const p=P(side),m=p.board.find(x=>x.uid===attUid);
+  if(!m){game.animating=false;render();return}
+  const atk=effectiveAttack(side,m);
+  const attackerDef=C[m.id]||tokenDefs[m.id]||{};
+  if(attackerDef.onAttack==="heal2")applyHealing(side,{side,kind:"hero"},2,m.name);
+  if(target.kind==="hero"){
+    damageHero(target.side,atk,m.name);
+    game.animating=false;render();return;
+  }
+  const tm=P(target.side).board.find(x=>x.uid===target.uid);
+  if(!tm){game.animating=false;render();return}
+  const ret=effectiveAttack(target.side,tm);
+  log(`${m.name}(${atk}/${m.hp}) → ${tm.name}(${ret}/${tm.hp})`);
+  const dealt=damageMinion(target.side,tm.uid,atk,m.name);
+  if((C[m.id]||{}).onDamageDealt==="freeze" && dealt>0)freezeTarget(target);
+  const still=P(side).board.find(x=>x.uid===attUid);
+  if(still)damageMinion(side,attUid,ret,tm.name);
+  game.animating=false;render();
+}
+function renderControlsOnly(){
+  const end=byId("endTurnBtn");if(end)end.disabled=true;
+  const rr=byId("rerollBtn");if(rr)rr.disabled=true;
+  const bf=document.querySelector(".battlefield");if(bf)bf.classList.add("animating");
+}
+
+function checkGameOver(){
+  if(!game||game.over)return;
+  if(game.human.hp<=0||game.npc.hp<=0){
+    game.over=true;
+    game.winner=game.human.hp===game.npc.hp?"draw":(game.human.hp>game.npc.hp?"human":"npc");
+    const msg=game.winner==="draw"?"引き分け":`${sideLabel(game.winner)}の勝ち`;
+    log(`=== ${msg} ===`);
+    render();
+  }
+}
+
+function targetDom(t){
+  if(t.kind==="hero") return heroElForSide(t.side);
+  return minionEl(t.uid);
+}
+function clearPlacementOverlay(){
+  const old=byId("placementOverlay");
+  if(old)old.remove();
+}
+function placementXPositions(boardEl){
+  const cards=[...boardEl.querySelectorAll(":scope > .card")];
+  if(cards.length===0)return [boardEl.clientWidth/2];
+  const xs=[];
+  xs.push(cards[0].offsetLeft);
+  for(let i=1;i<cards.length;i++){
+    const a=cards[i-1],b=cards[i];
+    xs.push((a.offsetLeft+a.offsetWidth+b.offsetLeft)/2);
+  }
+  const last=cards[cards.length-1];
+  xs.push(last.offsetLeft+last.offsetWidth);
+  return xs;
+}
+function showPlacementOverlay(index,id,mode="click"){
+  const board=byId("humanBoard");
+  if(!board)return;
+  clearPlacementOverlay();
+
+  const overlay=document.createElement("div");
+  overlay.id="placementOverlay";
+  overlay.className="placement-overlay";
+
+  const cap=document.createElement("div");
+  cap.className="placement-caption";
+  cap.textContent=mode==="drag" ? "置きたい位置にドロップ" : `${C[id].name} の配置位置を選択`;
+  overlay.appendChild(cap);
+
+  const xs=placementXPositions(board);
+  const y=Math.max(72,board.clientHeight/2);
+  xs.forEach((x,pos)=>{
+    const mk=document.createElement("div");
+    mk.className="placement-marker";
+    mk.textContent="+";
+    mk.style.left=`${x}px`;
+    mk.style.top=`${y}px`;
+    mk.title=`位置 ${pos+1}`;
+
+    mk.onclick=(e)=>{
+      e.stopPropagation();
+      if(pending?.kind==="placement")choosePlacement(pos);
+    };
+    mk.ondragover=(e)=>{
+      if(!dragPurchase || C[dragPurchase.id].type!=="minion")return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect="move";
+      mk.classList.add("drag-over");
+    };
+    mk.ondragleave=()=>mk.classList.remove("drag-over");
+    mk.ondrop=(e)=>{
+      e.preventDefault();e.stopPropagation();
+      mk.classList.remove("drag-over");
+      dropMinionAtPlacement(pos);
+    };
+    overlay.appendChild(mk);
+  });
+  board.appendChild(overlay);
+}
+function syncPlacementOverlay(){
+  if(pending?.kind==="placement"){
+    showPlacementOverlay(pending.index,pending.id,"click");
+  }
+}
+function clearDragHighlights(){
+  document.querySelectorAll(".drag-valid-target").forEach(el=>el.classList.remove("drag-valid-target"));
+  document.querySelectorAll(".drag-invalid").forEach(el=>el.classList.remove("drag-invalid"));
+  document.querySelector(".battlefield")?.classList.remove("spell-drop-ready");
+  byId("dragHelp")?.remove();
+}
+function showDragHelp(text){
+  byId("dragHelp")?.remove();
+  const d=document.createElement("div");
+  d.id="dragHelp";d.className="drag-help";d.textContent=text;
+  document.body.appendChild(d);
+}
+
+function startShopDrag(e,index){
+  const side=localSide(),p=P(side);
+  if(!game||game.active!==side||game.over||game.animating||game.choice||netActionPending){e.preventDefault();return}
+  const id=p.shop[index],c=C[id];
+  if(!id||spellCost(side,id)>p.mana){e.preventDefault();return}
+  if(c.type==="minion"&&p.board.length>=CONFIG.boardLimit){e.preventDefault();return}
+
+  dragPurchase={index,id};
+  e.currentTarget.classList.add("shop-card-dragging");
+  e.dataTransfer.effectAllowed="move";
+  e.dataTransfer.setData("text/plain",id);
+
+  if(c.type==="minion"){
+    showPlacementOverlay(index,id,"drag");
+    showDragHelp("ミニオンを置きたい位置の ＋ にドロップ");
+  }else if(c.target){
+    const targets=validTargets(side,c.target);
+    targets.forEach(t=>targetDom(t)?.classList.add("drag-valid-target"));
+    showDragHelp("青く光っている対象にドロップ");
+  }else{
+    document.querySelector(".battlefield")?.classList.add("spell-drop-ready");
+    showDragHelp("戦場にドロップしてスペルを使用");
+  }
+}
+function endShopDrag(e){
+  e.currentTarget?.classList.remove("shop-card-dragging");
+  dragPurchase=null;
+  clearDragHighlights();
+  // A click-placement flow may still be active; restore its overlay after drag cleanup.
+  clearPlacementOverlay();
+  if(pending?.kind==="placement")requestAnimationFrame(syncPlacementOverlay);
+}
+
+function dropMinionAtPlacement(position){
+  if(!dragPurchase)return;
+  const side=localSide(),{index,id}=dragPurchase,c=C[id];
+  if(c.type!=="minion")return;
+  clearDragHighlights();clearPlacementOverlay();
+  if(c.target){
+    const targets=validTargets(side,c.target);
+    if(!targets.length){dragPurchase=null;submitPurchase(index,null,position);return}
+    pending={kind:"purchaseMinionTarget",index,id,placement:position,targets};
+    dragPurchase=null;render();
+  }else{
+    dragPurchase=null;submitPurchase(index,null,position);
+  }
+}
+
+function isDragValidTarget(side,kind,uid){
+  if(!dragPurchase)return false;
+  const c=C[dragPurchase.id];
+  if(c.type!=="spell"||!c.target)return false;
+  const key=`${side}:${kind}:${uid||"hero"}`;
+  return validTargets(localSide(),c.target).some(t=>targetKey(t)===key);
+}
+function handleTargetDragOver(e,side,kind,uid=null){
+  if(isDragValidTarget(side,kind,uid)){
+    e.preventDefault();
+    e.dataTransfer.dropEffect="move";
+  }
+}
+
+function handleTargetDrop(e,side,kind,uid=null){
+  if(!dragPurchase||!isDragValidTarget(side,kind,uid))return;
+  e.preventDefault();e.stopPropagation();
+  const {index}=dragPurchase,target={side,kind,uid};
+  dragPurchase=null;clearDragHighlights();clearPlacementOverlay();
+  submitPurchase(index,target,null);
+}
+function handleBattlefieldDragOver(e){
+  if(!dragPurchase)return;
+  const c=C[dragPurchase.id];
+  if(c.type==="spell"&&!c.target){
+    e.preventDefault();
+    e.dataTransfer.dropEffect="move";
+  }
+}
+
+function handleBattlefieldDrop(e){
+  if(!dragPurchase)return;
+  const c=C[dragPurchase.id];
+  if(c.type!=="spell"||c.target)return;
+  e.preventDefault();
+  const index=dragPurchase.index;
+  dragPurchase=null;clearDragHighlights();
+  submitPurchase(index,null,null);
+}
+function targetKey(t){return `${t.side}:${t.kind}:${t.uid||"hero"}`}
+
+function beginPurchase(index){
+  const side=localSide(),p=P(side);
+  if(game.active!==side||game.over||game.animating||game.choice||netActionPending)return;
+  const id=p.shop[index],c=C[id];if(!c)return;
+  const cost=spellCost(side,id);if(cost>p.mana)return;
+  if(c.type==="minion"&&p.board.length>=CONFIG.boardLimit)return;
+
+  if(c.type==="minion"){
+    pending={kind:"placement",index,id,placement:null};selectedAttacker=null;render();return;
+  }
+  if(c.target){
+    const targets=validTargets(side,c.target);
+    if(!targets.length){alert("有効な対象がありません。");return}
+    pending={kind:"purchase",index,id,targets,placement:null};selectedAttacker=null;render();
+  }else submitPurchase(index,null,null);
+}
+
+function choosePlacement(position){
+  if(!pending||pending.kind!=="placement")return;
+  const side=localSide(),{index,id}=pending,c=C[id];
+  clearPlacementOverlay();pending=null;
+  if(c.target){
+    const previewTargets=validTargets(side,c.target);
+    if(!previewTargets.length){submitPurchase(index,null,position);return}
+    pending={kind:"purchaseMinionTarget",index,id,placement:position,targets:previewTargets};render();
+  }else submitPurchase(index,null,position);
+}
+function submitPurchase(index,target,placement){
+  pending=null;selectedAttacker=null;dragPurchase=null;clearPlacementOverlay();clearDragHighlights();
+  sendLocalAction("buy",{index,target,placement});
+}
+function cancelPending(){pending=null;selectedAttacker=null;dragPurchase=null;clearPlacementOverlay();clearDragHighlights();render()}
+
+function clickTarget(side,kind,uid){
+  const me=localSide(),t={side,kind,uid};
+  if(game?.choice&&game.choice.side===me){
+    if(!game.choice.targets.some(x=>targetKey(x)===targetKey(t)))return;
+    sendLocalAction("startEffectTarget",{target:t});return;
+  }
+  if(pending&&pending.kind!=="placement"){
+    const key=targetKey(t);
+    if(!pending.targets.some(x=>targetKey(x)===key))return;
+    const chosen=pending.targets.find(x=>targetKey(x)===key),i=pending.index,placement=pending.placement;
+    submitPurchase(i,chosen,placement);return;
+  }
+  if(selectedAttacker){
+    const attUid=selectedAttacker;selectedAttacker=null;
+    sendLocalAction("attack",{attUid,target:t});
+  }
+}
+
+function selectAttacker(uid){
+  const side=localSide();
+  if(game.active!==side||pending||game.choice||game.over||game.animating||netActionPending)return;
+  const m=P(side).board.find(x=>x.uid===uid); if(!m||!m.canAttack||m.frozen>0||effectiveAttack(side,m)<=0)return;
+  selectedAttacker=selectedAttacker===uid?null:uid;render();
+}
+
+function endHumanTurn(){
+  const side=localSide();
+  if(game.active!==side||game.over||game.animating||game.choice||netActionPending)return;
+  pending=null;selectedAttacker=null;
+  sendLocalAction("endTurn");
+}
+function chooseNpcTargetForCard(side,id){
+  const c=C[id];if(!c.target)return null;
+  const targets=validTargets(side,c.target);if(!targets.length)return null;
+  const opp=O(side);
+
+  if(id==="smallheal"){
+    if(hasAuchenai(side)){
+      const enemies=targets.filter(t=>t.side===opp);
+      return enemies.find(t=>t.kind==="minion")||enemies.find(t=>t.kind==="hero");
+    }
+    const damaged=targets.filter(t=>{
+      if(t.side!==side)return false;
+      if(t.kind==="hero")return P(side).hp<CONFIG.heroHp;
+      const m=P(side).board.find(x=>x.uid===t.uid);return m&&m.hp<m.maxHp;
+    });
+    return damaged[0]||targets.find(t=>t.side===side&&t.kind==="hero");
+  }
+  if(id==="taskmaster"){
+    const friendly=targets.filter(t=>t.side===side&&t.kind==="minion");
+    const synergy=friendly.find(t=>["amani","frothing","grommash","grimpatron"].includes(P(side).board.find(x=>x.uid===t.uid)?.id));
+    if(synergy)return synergy;
+  }
+  if(c.target==="friendlyMinionOther"||c.target==="friendlyMinion"){
+    return targets.sort((a,b)=>{
+      const ma=P(a.side).board.find(x=>x.uid===a.uid),mb=P(b.side).board.find(x=>x.uid===b.uid);
+      return (effectiveAttack(b.side,mb)+mb.hp)-(effectiveAttack(a.side,ma)+ma.hp)
+    })[0];
+  }
+  if(["enemyMinion","damagedEnemyMinion"].includes(c.target)){
+    return targets.sort((a,b)=>{
+      const ma=P(a.side).board.find(x=>x.uid===a.uid),mb=P(b.side).board.find(x=>x.uid===b.uid);
+      return (effectiveAttack(b.side,mb)+mb.hp)-(effectiveAttack(a.side,ma)+ma.hp)
+    })[0];
+  }
+  if(c.target==="highAttackMinion"){
+    const enemy=targets.filter(t=>t.side===opp);
+    return enemy[0]||targets[0];
+  }
+  if(c.target==="anyMinion"){
+    const enemy=targets.filter(t=>t.side===opp);
+    if(enemy.length)return enemy.sort((a,b)=>{
+      const ma=P(a.side).board.find(x=>x.uid===a.uid),mb=P(b.side).board.find(x=>x.uid===b.uid);
+      return (mb.hp+effectiveAttack(b.side,mb))-(ma.hp+effectiveAttack(a.side,ma))
+    })[0];
+    return targets[0];
+  }
+  if(c.target==="enemyCharacter"){
+    if(["killcommand","fireball"].includes(id) && P(opp).hp<=8)return targets.find(t=>t.kind==="hero");
+    const mins=targets.filter(t=>t.kind==="minion");
+    if(mins.length)return mins.sort((a,b)=>{
+      const ma=P(a.side).board.find(x=>x.uid===a.uid),mb=P(b.side).board.find(x=>x.uid===b.uid);
+      return mb.hp-ma.hp
+    })[0];
+    return targets.find(t=>t.kind==="hero");
+  }
+  if(c.target==="anyCharacter"){
+    if(["soulfire","sparkmage"].includes(id)){
+      const mins=targets.filter(t=>t.side===opp&&t.kind==="minion");
+      return mins[0]||targets.find(t=>t.side===opp&&t.kind==="hero");
+    }
+    const mins=targets.filter(t=>t.side===opp&&t.kind==="minion");return mins[0]||targets.find(t=>t.side===opp&&t.kind==="hero");
+  }
+  return targets[0];
+}
+function chooseNpcPlacement(side,id){
+  const p=P(side),n=p.board.length;
+  if(n===0)return 0;
+  if(["divineapostle","innerfireacolyte","shieldacolyte","powercultist","argentprotector"].includes(id)){
+    let best=0,bestScore=-1;
+    p.board.forEach((m,i)=>{const sc=effectiveAttack(side,m)+m.hp;if(sc>bestScore){bestScore=sc;best=i}});
+    return best; // insert immediately left of the chosen right-neighbor
+  }
+  if(id==="voidterror"){
+    if(n>=2)return 1;
+    return 0;
+  }
+  if(["defenderargus","direwolf"].includes(id))return Math.floor(n/2);
+  return n;
+}
+function npcFreezeForReroll(){
+  const p=game.npc;normalizeShopFlags("npc");
+  // Keep at most one expensive, high-value card while rerolling.
+  let best=-1,bestScore=7.5;
+  p.shop.forEach((id,i)=>{
+    if(C[id].cost>p.mana){
+      const sc=cardScore(id);
+      if(sc>bestScore){best=i;bestScore=sc}
+    }
+  });
+  p.shopFrozenFlags=p.shop.map((_,i)=>i===best);
+}
+function npcBuyLoop(){
+  let safety=40;
+  while(safety-- && !game.over){
+    const p=game.npc;
+    normalizeShopFlags("npc");
+    const options=p.shop.map((id,i)=>({id,i,c:C[id],cost:spellCost("npc",id)}))
+      .filter(x=>x.cost<=p.mana && (x.c.type==="spell"||p.board.length<CONFIG.boardLimit));
+    if(options.length){
+      options.sort((a,b)=>cardScore(b.id)-cardScore(a.id));
+      let chosen=null,target=null,placement=null;
+      for(const o of options){
+        if(o.c.target){
+          target=chooseNpcTargetForCard("npc",o.id);
+          if(o.c.type==="spell"&&!target)continue;
+        }
+        placement=o.c.type==="minion"?chooseNpcPlacement("npc",o.id):null;
+        chosen=o;break;
+      }
+      if(!chosen)break;
+      buyFromShop("npc",chosen.i,target,placement);
+      continue;
+    }
+
+    const rc=rerollCost("npc");
+    if(p.mana>=rc && hasRerollableCards("npc")){
+      npcFreezeForReroll();
+      if(rerollShop("npc"))continue;
+    }
+    break;
+  }
+}
+function npcAttackLoop(done,steps=0){
+  if(game.over){done();return}
+
+  // Failsafe: an AI bug must never lock the turn forever.
+  if(steps>40){
+    log("NPC攻撃処理の安全停止。");
+    game.npc.board.forEach(m=>m.canAttack=false);
+    done();
+    return;
+  }
+
+  const nextAttacker=game.npc.board.find(m=>m.canAttack && effectiveAttack("npc",m)>0);
+  if(!nextAttacker){done();return}
+
+  const m=nextAttacker, opp=game.human;
+
+  // Build the target list from ACTUALLY LEGAL targets.
+  // This is essential for Rush minions: they may attack minions this turn,
+  // but cannot attack the enemy hero.
+  const allTargets=[
+    ...opp.board.map(x=>({side:"human",kind:"minion",uid:x.uid})),
+    {side:"human",kind:"hero"}
+  ];
+  const legalTargets=allTargets.filter(t=>canAttackTarget("npc",m,t));
+
+  // If no legal attack exists, consume the attack opportunity and continue.
+  if(!legalTargets.length){
+    m.canAttack=false;
+    setTimeout(()=>npcAttackLoop(done,steps+1),80);
+    return;
+  }
+
+  const atk=effectiveAttack("npc",m);
+  const legalMinions=legalTargets.filter(t=>t.kind==="minion");
+  const legalHero=legalTargets.find(t=>t.kind==="hero");
+  let chosen=null;
+
+  // Prefer a favorable kill when possible.
+  const killable=legalMinions.filter(t=>{
+    const tm=opp.board.find(x=>x.uid===t.uid);
+    return tm && tm.hp<=atk;
+  });
+
+  if(killable.length){
+    chosen=killable.sort((a,b)=>{
+      const ma=opp.board.find(x=>x.uid===a.uid);
+      const mb=opp.board.find(x=>x.uid===b.uid);
+      return effectiveAttack("human",mb)-effectiveAttack("human",ma);
+    })[0];
+  }else if(legalHero){
+    // Only go face when face is legally attackable.
+    chosen=legalHero;
+  }else if(legalMinions.length){
+    // Rush minions that cannot go face must trade into a minion.
+    chosen=legalMinions.sort((a,b)=>{
+      const ma=opp.board.find(x=>x.uid===a.uid);
+      const mb=opp.board.find(x=>x.uid===b.uid);
+      return (effectiveAttack("human",mb)+mb.hp)-(effectiveAttack("human",ma)+ma.hp);
+    })[0];
+  }
+
+  if(!chosen){
+    m.canAttack=false;
+    setTimeout(()=>npcAttackLoop(done,steps+1),80);
+    return;
+  }
+
+  const started=attack("npc",m.uid,chosen);
+
+  // Extra guard: if an attack is rejected for any unforeseen rules reason,
+  // do not retry the same attacker forever.
+  if(!started){
+    m.canAttack=false;
+    setTimeout(()=>npcAttackLoop(done,steps+1),80);
+    return;
+  }
+
+  const wait=()=>{
+    if(game.animating)setTimeout(wait,60);
+    else setTimeout(()=>npcAttackLoop(done,steps+1),100);
+  };
+  setTimeout(wait,80);
+}
+function npcChooseEndFreezes(){
+  const p=game.npc;normalizeShopFlags("npc");
+  p.shopFrozenFlags=p.shop.map(id=>{
+    const score=cardScore(id);
+    return C[id].cost>p.mana && score>=7;
+  });
+}
+function npcTurn(){
+  if(game.over)return;
+  npcBuyLoop();
+  npcAttackLoop(()=>{
+    game.npc.board.forEach(m=>m.summonedThisTurn=false);
+    processEndTurn("npc");
+    npcChooseEndFreezes();
+    cleanupShopAtEnd("npc");
+    if(!game.over)startTurn("human");
+  });
+}
+
+function cardHtml(id,side,instance=null,shopIndex=null){
+  const d=C[id]||tokenDefs[id],m=instance;
+  const cost=shopIndex!==null?spellCost(side,id):d.cost;
+  const stats=d.type==="minion"&&m?`<div class="stats"><span class="atk">${effectiveAttack(side,m)}</span><span class="health">${m.hp}</span></div>`:
+    d.type==="minion"?`<div class="stats"><span class="atk">${d.atk}</span><span class="health">${d.hp}</span></div>`:"";
+  let tags=[];
+  if(d.rush)tags.push("急襲");if(m?.taunt)tags.push("挑発");if(m?.shield)tags.push("聖なる盾");if(m?.frozen)tags.push("凍結");
+  if(m?.canAttack&&!m?.frozen&&effectiveAttack(side,m)>0)tags.push("攻撃可");
+  const buy=shopIndex!==null&&side===localSide()?`<button class="btn good" onclick="event.stopPropagation();beginPurchase(${shopIndex})">購入</button>`:"";
+  return `<div class="cost">${cost}</div><div class="name">${d.name}</div><div class="type">${d.set||""} ${d.type==="spell"?"スペル":"ミニオン"}</div>
+  <div>${tags.map(x=>`<span class="tag">${x}</span>`).join("")}</div><div class="text">${d.text||""}</div>${stats}${buy}`;
+}
+
+function isPendingTarget(side,kind,uid){
+  const k=`${side}:${kind}:${uid||"hero"}`;
+  if(game?.choice&&game.choice.side===localSide())return game.choice.targets.some(t=>targetKey(t)===k);
+  if(!pending||pending.kind==="placement"||!pending.targets)return false;
+  return pending.targets.some(t=>targetKey(t)===k);
+}
+
+function renderBoard(side,containerId){
+  const el=byId(containerId);el.innerHTML="";
+  const board=P(side).board,me=localSide(),opp=O(me),att=P(me).board.find(x=>x.uid===selectedAttacker);
+  board.forEach(m=>{
+    const d=document.createElement("div");d.className="card mini minion-card";d.id=`minion-${m.uid}`;
+    if(side===me&&m.canAttack&&!m.frozen&&effectiveAttack(side,m)>0)d.classList.add("ready-to-attack");
+    if(side===me&&selectedAttacker===m.uid)d.classList.add("selectable");
+    if(isPendingTarget(side,"minion",m.uid))d.classList.add("targetable");
+    if(side===opp&&selectedAttacker&&att&&canAttackTarget(me,att,{side:opp,kind:"minion",uid:m.uid}))d.classList.add("targetable");
+    d.innerHTML=cardHtml(m.id,side,m,null);
+    d.onclick=()=>{
+      if(side===me){
+        if((pending&&pending.kind!=="placement")||hasLocalChoice())clickTarget(side,"minion",m.uid);
+        else if(!pending)selectAttacker(m.uid);
+      }else clickTarget(side,"minion",m.uid);
+    };
+    d.ondragover=(e)=>handleTargetDragOver(e,side,"minion",m.uid);
+    d.ondrop=(e)=>handleTargetDrop(e,side,"minion",m.uid);
+    el.appendChild(d);
+  });
+  if(!board.length)el.innerHTML=`<div class="sub">盤面なし</div>`;
+}
+
+function renderShop(side){
+  const p=P(side);normalizeShopFlags(side);
+  const el=byId("humanShop");el.innerHTML="";
+  p.shop.forEach((id,i)=>{
+    const c=C[id];if(!c)return;
+    const d=document.createElement("div");
+    d.className=`card shop-card-wrap ${c.type==="spell"?"spell-card":"minion-card"}${p.shopFrozenFlags[i]?" shop-frozen":""}`;
+    d.innerHTML=cardHtml(id,side,null,i);
+    const freeze=document.createElement("button");
+    freeze.className=`btn compact shop-freeze-btn${p.shopFrozenFlags[i]?" active":""}`;
+    freeze.textContent="❄";freeze.title=p.shopFrozenFlags[i]?"フリーズ解除":"このカードをフリーズ";freeze.draggable=false;
+    freeze.onpointerdown=(e)=>e.stopPropagation();freeze.onclick=(e)=>{e.preventDefault();e.stopPropagation();toggleCardFreeze(i)};
+    d.appendChild(freeze);
+    const legal=game.active===side&&!game.over&&!game.animating&&!game.choice&&!netActionPending&&
+      spellCost(side,id)<=p.mana&&(c.type==="spell"||p.board.length<CONFIG.boardLimit);
+    d.draggable=!!legal;
+    if(legal){d.ondragstart=(e)=>startShopDrag(e,i);d.ondragend=(e)=>endShopDrag(e)}else d.classList.add("drag-invalid");
+    el.appendChild(d);
+  });
+  if(!p.shop.length)el.innerHTML='<div class="sub">ショップは空です。</div>';
+}
+
+function renderHero(side,containerId){
+  const p=P(side),el=byId(containerId),me=localSide(),opp=O(me);
+  const targetable=isPendingTarget(side,"hero",null)||(side===opp&&selectedAttacker&&!hasTaunt(opp));
+  el.className="hero"+(targetable?" targetable":"");
+  const name=side===me?"あなた":"相手";
+  el.innerHTML=`<strong>${name}</strong><br><span class="hp">HP ${p.hp}</span>　<span class="armor">装甲 ${p.armor}</span>　<span class="mana">Mana ${p.mana}/${p.maxMana}</span><br><span class="sub">Deck ${p.deck.length} / Discard ${p.discard.length} / 廃棄 ${p.exile.length}</span>`;
+  el.onclick=()=>clickTarget(side,"hero",null);
+  el.ondragover=(e)=>handleTargetDragOver(e,side,"hero",null);
+  el.ondrop=(e)=>handleTargetDrop(e,side,"hero",null);
+}
+function renderLog(){const el=document.getElementById("log");if(!el||!game)return;el.textContent=game.log.slice(-120).join("\n");el.scrollTop=el.scrollHeight}
+
+function render(){
+  if(!game)return;
+  const me=localSide(),opp=O(me);
+  renderHero(me,"humanHero");renderHero(opp,"npcHero");
+  renderBoard(me,"humanBoard");renderBoard(opp,"npcBoard");renderShop(me);renderLog();
+  const ti=byId("turnInfo");
+  if(game.over){
+    const result=game.winner==="draw"?"引き分け":game.winner===me?"あなたの勝ち！":"相手の勝ち";
+    ti.innerHTML=`<span class="winner">${result}</span>`;
+  }else{
+    let msg=game.active===me?"あなたのターン":"相手のターン";
+    if(!netConnected)msg+=` — <span class="notice">接続が切れています</span>`;
+    if(game.choice&&game.choice.side===me)msg+=` — <span class="notice">光の侍祭：回復対象を選択</span>`;
+    else if(game.choice)msg+=` — <span class="notice">相手が効果対象を選択中</span>`;
+    else if(pending?.kind==="placement")msg+=` — <span class="notice">${C[pending.id].name} の配置位置を選択</span>`;
+    else if(pending)msg+=` — <span class="notice">${C[pending.id].name} の対象を選択</span>`;
+    else if(selectedAttacker)msg+=` — <span class="notice">攻撃対象を選択</span>`;
+    else if(netActionPending)msg+=` — <span class="notice">相手と同期中...</span>`;
+    ti.innerHTML=msg;
+  }
+  byId("endTurnBtn").disabled=game.active!==me||game.over||game.animating||!!game.choice||netActionPending;
+  const rerollBtn=byId("rerollBtn"),rrCost=rerollCost(me);
+  rerollBtn.disabled=game.active!==me||game.over||game.animating||!!pending||!!dragPurchase||!!game.choice||netActionPending||
+    P(me).mana<rrCost||!hasRerollableCards(me);
+  rerollBtn.textContent=`リロール ${rrCost}マナ`;
+  byId("cancelBtn").classList.toggle("hidden",!pending&&!selectedAttacker);
+  const bf=document.querySelector(".battlefield");if(bf)bf.classList.toggle("animating",!!game.animating);
+  if(pending?.kind==="placement")requestAnimationFrame(syncPlacementOverlay);
+  broadcastSnapshot();
+}
+
+initClassSelection();
+initNetwork();
+</script>
+</body>
+</html>
